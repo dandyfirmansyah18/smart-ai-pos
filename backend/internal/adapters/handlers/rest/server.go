@@ -6,6 +6,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/pos-backend/config"
+	"github.com/pos-backend/internal/adapters/handlers/ws"
 	"github.com/pos-backend/internal/ports/inbound"
 	"github.com/pos-backend/internal/ports/outbound"
 )
@@ -15,12 +16,14 @@ type Server struct {
 	cfg          *config.Config
 	productRepo  outbound.ProductRepository
 	orderUseCase inbound.OrderUseCase
+	hub          *ws.Hub
 }
 
 func NewServer(
 	cfg *config.Config,
 	productRepo outbound.ProductRepository,
 	orderUseCase inbound.OrderUseCase,
+	hub ...*ws.Hub,
 ) *Server {
 	if cfg.Env == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -38,11 +41,17 @@ func NewServer(
 		MaxAge:           12 * time.Hour,
 	}))
 
+	var h *ws.Hub
+	if len(hub) > 0 {
+		h = hub[0]
+	}
+
 	s := &Server{
 		router:       r,
 		cfg:          cfg,
 		productRepo:  productRepo,
 		orderUseCase: orderUseCase,
+		hub:          h,
 	}
 
 	s.setupRoutes()
@@ -56,6 +65,10 @@ func (s *Server) setupRoutes() {
 			"time":   time.Now(),
 		})
 	})
+
+	if s.hub != nil {
+		s.router.GET("/ws", s.hub.ServeWS)
+	}
 
 	api := s.router.Group("/api")
 	{
