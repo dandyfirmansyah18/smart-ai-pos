@@ -6,7 +6,7 @@ import (
 	"time"
 
 	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/pos-backend/pkg/config"
+	"github.com/pos-backend/config"
 )
 
 func NewPostgresDB(cfg *config.Config) (*sql.DB, error) {

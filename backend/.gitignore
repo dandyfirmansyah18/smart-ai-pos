@@ -15,3 +15,7 @@ coverage.out
 
 # Go vendor (if generated)
 vendor/
+
+# Local configuration files (ignore local config.yaml, track config.example.yaml)
+config/config.yaml
+!config/config.example.yaml

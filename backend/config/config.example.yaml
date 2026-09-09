@@ -1,0 +1,24 @@
+# Server Environment Configuration
+server:
+  port: "8080"
+  env: "development"
+
+# PostgreSQL Database Configuration
+database:
+  host: "localhost"
+  port: "5432"
+  user: "postgres"
+  password: "postgres"
+  name: "pos_db"
+  ssl_mode: "disable"
+
+# Redis Cache & Lock Service
+redis:
+  addr: "localhost:6379"
+  password: ""
+  db: 0
+
+# AI Vision Service Configuration
+vision:
+  gemini_api_key: "your_gemini_api_key_here"
+  openai_api_key: "your_openai_api_key_here"
