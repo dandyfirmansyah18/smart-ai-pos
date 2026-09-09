@@ -1,0 +1,17 @@
+# Go binaries and executables
+bin/
+main
+*.exe
+*.exe-e
+*.dll
+*.so
+*.dylib
+
+# Test artifacts & coverage
+*.test
+*.out
+coverage.txt
+coverage.out
+
+# Go vendor (if generated)
+vendor/
