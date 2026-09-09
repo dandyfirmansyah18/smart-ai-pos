@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/pos-backend/internal/adapters/infrastructure/pg"
-	"github.com/pos-backend/pkg/config"
+	"github.com/pos-backend/config"
 )
 
 func TestConfigAndDBSetup(t *testing.T) {

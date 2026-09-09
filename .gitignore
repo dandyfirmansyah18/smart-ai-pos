@@ -14,10 +14,13 @@ Thumbs.db
 *.swo
 *~
 
-# Environment variables
-.env
-.env.*
-!.env.example
+# Environment & Config local files
+config.yaml
+config/config.yaml
+backend/config/config.yaml
+!config.example.yaml
+!config/config.example.yaml
+!backend/config/config.example.yaml
 
 # Logs
 *.log

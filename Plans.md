@@ -107,15 +107,18 @@ In this phase, we establish the domain boundaries. There are no external framewo
 
 We implement PostgreSQL infrastructure. Database queries use SQL transactions (`*sql.Tx`) and pessimistic concurrency controls.
 
-### Task 2.1: PostgreSQL Connection Pool Setup
+### Task 2.1: PostgreSQL Connection Pool Setup & Viper Configuration
 * **Files to create/modify**:
   * `backend/internal/adapters/infrastructure/pg/db.go`
-  * `backend/pkg/config/config.go`
+  * `backend/config/config.go`
+  * `backend/config/config.yaml`
+  * `backend/config/config.example.yaml`
 * **Details**:
-  * Implement standard database driver pool initialization (using `github.com/jackc/pgx/v5/stdlib` or standard GORM config).
+  * Implement configuration management in `backend/config/config.go` using Viper (`github.com/spf13/viper`) to parse `config.yaml` with automatic fallbacks and environment variable overrides.
+  * Implement standard database driver pool initialization (using `github.com/jackc/pgx/v5/stdlib`).
   * Configure connection limits: `SetMaxOpenConns(25)`, `SetMaxIdleConns(25)`, `SetConnMaxLifetime(15 * time.Minute)`.
 * **Testing Requirements**:
-  * `db_test.go` ensuring that the connection pool correctly reads credentials from environment variables.
+  * `db_test.go` ensuring that the connection pool correctly reads credentials from Viper configuration settings.
 
 ---
 
@@ -138,6 +141,26 @@ We implement PostgreSQL infrastructure. Database queries use SQL transactions (`
   * Implement lookup queries (`GetByID`, `GetByIdempotencyKey`, `UpdateStatus`).
 * **Testing Requirements**:
   * Integration tests verifying cascading order item insertion and transaction rollbacks if order insertion fails midway.
+
+---
+
+### Task 2.4: Database Migrations & Seed Data Setup
+* **Files to create/modify**:
+  * `backend/migrations/000001_create_products_table.up.sql`
+  * `backend/migrations/000001_create_products_table.down.sql`
+  * `backend/migrations/000002_create_orders_table.up.sql`
+  * `backend/migrations/000002_create_orders_table.down.sql`
+  * `backend/migrations/000003_create_receipt_audits_table.up.sql`
+  * `backend/migrations/000003_create_receipt_audits_table.down.sql`
+  * `backend/cmd/migrate/main.go`
+  * `backend/cmd/seed/main.go`
+* **Details**:
+  * Create raw SQL migration up/down scripts for `products`, `orders`, `order_items`, `receipt_audits`, and custom `order_status` ENUM type.
+  * Implement CLI command `cmd/migrate/main.go` to execute database schema migrations against PostgreSQL.
+  * Implement CLI seeder `cmd/seed/main.go` to populate initial product catalog stock items for local development & testing.
+* **Testing Requirements**:
+  * Verify migration scripts execute cleanly up & down without SQL syntax errors.
+
 
 ---
 
