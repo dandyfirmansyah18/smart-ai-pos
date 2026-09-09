@@ -16,6 +16,7 @@ type OrderUseCaseImpl struct {
 	productRepo outbound.ProductRepository
 	orderRepo   outbound.OrderRepository
 	lockService outbound.LockService
+	broadcaster outbound.EventBroadcaster
 }
 
 func NewOrderUseCaseImpl(
@@ -23,13 +24,24 @@ func NewOrderUseCaseImpl(
 	productRepo outbound.ProductRepository,
 	orderRepo outbound.OrderRepository,
 	lockService outbound.LockService,
+	broadcaster ...outbound.EventBroadcaster,
 ) *OrderUseCaseImpl {
+	var b outbound.EventBroadcaster
+	if len(broadcaster) > 0 {
+		b = broadcaster[0]
+	}
 	return &OrderUseCaseImpl{
 		db:          db,
 		productRepo: productRepo,
 		orderRepo:   orderRepo,
 		lockService: lockService,
+		broadcaster: b,
 	}
+}
+
+type updatedStockInfo struct {
+	sku      string
+	newStock int
 }
 
 func (s *OrderUseCaseImpl) Checkout(ctx context.Context, req CheckoutRequest) (*domain.Order, error) {
@@ -79,6 +91,7 @@ func (s *OrderUseCaseImpl) Checkout(ctx context.Context, req CheckoutRequest) (*
 	// 4. Process each item: row-level pessimistic locking & stock decrement
 	var totalAmount float64
 	orderItems := make([]domain.OrderItem, 0, len(req.Items))
+	stockUpdates := make([]updatedStockInfo, 0, len(req.Items))
 
 	for _, item := range req.Items {
 		if item.Quantity <= 0 {
@@ -99,6 +112,8 @@ func (s *OrderUseCaseImpl) Checkout(ctx context.Context, req CheckoutRequest) (*
 		if err := s.productRepo.UpdateStock(ctx, tx, item.SKU, newStock); err != nil {
 			return nil, err
 		}
+
+		stockUpdates = append(stockUpdates, updatedStockInfo{sku: item.SKU, newStock: newStock})
 
 		itemTotal := float64(item.Quantity) * product.Price
 		totalAmount += itemTotal
@@ -142,8 +157,15 @@ func (s *OrderUseCaseImpl) Checkout(ctx context.Context, req CheckoutRequest) (*
 		tx = nil
 	}
 
+	// 8. Broadcast real-time stock update events to connected WebSocket clients
+	if s.broadcaster != nil {
+		for _, update := range stockUpdates {
+			s.broadcaster.BroadcastStockUpdate(update.sku, update.newStock)
+		}
+	}
+
 	return order, nil
 }
 
-// Compile-time check to ensure OrderUseCaseImpl implements OrderUseCase
+// Compile-time check
 var _ OrderUseCase = (*OrderUseCaseImpl)(nil)
