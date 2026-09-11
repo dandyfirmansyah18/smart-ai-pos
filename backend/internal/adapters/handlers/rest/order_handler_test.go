@@ -34,7 +34,7 @@ func TestOrderHandler_Checkout_Success(t *testing.T) {
 
 	orderUseCase := inbound.NewOrderUseCaseImpl(nil, mockProductRepo, mockOrderRepo, mockLockService)
 	cfg := &config.Config{Port: "8080", Env: "test"}
-	server := rest.NewServer(cfg, mockProductRepo, orderUseCase)
+	server := rest.NewServer(cfg, mockProductRepo, orderUseCase, nil)
 
 	payload := map[string]interface{}{
 		"idempotency_key": "IDEM-HEADER-TEST-999",
@@ -74,7 +74,7 @@ func TestOrderHandler_Checkout_BadRequest(t *testing.T) {
 
 	orderUseCase := inbound.NewOrderUseCaseImpl(nil, mockProductRepo, mockOrderRepo, mockLockService)
 	cfg := &config.Config{Port: "8080", Env: "test"}
-	server := rest.NewServer(cfg, mockProductRepo, orderUseCase)
+	server := rest.NewServer(cfg, mockProductRepo, orderUseCase, nil)
 
 	// Missing idempotency key
 	payload := map[string]interface{}{
