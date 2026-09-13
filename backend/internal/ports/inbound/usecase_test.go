@@ -3,13 +3,13 @@ package inbound_test
 import (
 	"testing"
 
-	"github.com/pos-backend/internal/ports/inbound"
+	"github.com/pos-backend/internal/dto"
 )
 
 func TestCheckoutRequestStruct(t *testing.T) {
-	req := inbound.CheckoutRequest{
+	req := dto.CheckoutRequest{
 		IdempotencyKey: "test-idem-key-123",
-		Items: []inbound.CheckoutItem{
+		Items: []dto.CheckoutItemRequest{
 			{
 				SKU:      "SKU-001",
 				Quantity: 2,

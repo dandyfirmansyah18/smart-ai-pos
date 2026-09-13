@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pos-backend/internal/domain"
+	"github.com/pos-backend/internal/dto"
 	"github.com/pos-backend/internal/ports/inbound"
 	"github.com/pos-backend/internal/ports/outbound"
 )
@@ -33,9 +34,9 @@ func TestCheckout_Success(t *testing.T) {
 	useCase := inbound.NewOrderUseCaseImpl(nil, mockProductRepo, mockOrderRepo, mockLockService)
 	ctx := context.Background()
 
-	req := inbound.CheckoutRequest{
+	req := dto.CheckoutRequest{
 		IdempotencyKey: "IDEM-TEST-100",
-		Items: []inbound.CheckoutItem{
+		Items: []dto.CheckoutItemRequest{
 			{
 				SKU:      "SKU-COFFEE",
 				Quantity: 2,
@@ -82,9 +83,9 @@ func TestCheckout_InsufficientStock(t *testing.T) {
 	useCase := inbound.NewOrderUseCaseImpl(nil, mockProductRepo, mockOrderRepo, mockLockService)
 	ctx := context.Background()
 
-	req := inbound.CheckoutRequest{
+	req := dto.CheckoutRequest{
 		IdempotencyKey: "IDEM-TEST-101",
-		Items: []inbound.CheckoutItem{
+		Items: []dto.CheckoutItemRequest{
 			{
 				SKU:      "SKU-LIMITED",
 				Quantity: 5, // Requesting more than available stock (2)
@@ -124,9 +125,9 @@ func TestCheckout_IdempotencyRetry(t *testing.T) {
 	useCase := inbound.NewOrderUseCaseImpl(nil, mockProductRepo, mockOrderRepo, mockLockService)
 	ctx := context.Background()
 
-	req := inbound.CheckoutRequest{
+	req := dto.CheckoutRequest{
 		IdempotencyKey: "IDEM-SAME-KEY-555",
-		Items: []inbound.CheckoutItem{
+		Items: []dto.CheckoutItemRequest{
 			{
 				SKU:      "SKU-IDEM",
 				Quantity: 1,
@@ -173,9 +174,9 @@ func TestCheckout_ConcurrentLockBlocked(t *testing.T) {
 	// Simulate Client A holding lock on key
 	mockLockService.AcquireLock(ctx, "lock:checkout:LOCKED-KEY", 10*time.Second)
 
-	req := inbound.CheckoutRequest{
+	req := dto.CheckoutRequest{
 		IdempotencyKey: "LOCKED-KEY",
-		Items: []inbound.CheckoutItem{
+		Items: []dto.CheckoutItemRequest{
 			{
 				SKU:      "SKU-TEST",
 				Quantity: 1,

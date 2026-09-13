@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/pos-backend/internal/domain"
+	"github.com/pos-backend/internal/dto"
 	"github.com/pos-backend/internal/ports/inbound"
 )
 
@@ -19,7 +20,7 @@ func NewOrderHandler(useCase inbound.OrderUseCase) *OrderHandler {
 
 // Checkout POST /api/orders/checkout
 func (h *OrderHandler) Checkout(c *gin.Context) {
-	var req inbound.CheckoutRequest
+	var req dto.CheckoutRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body format", "details": err.Error()})
 		return

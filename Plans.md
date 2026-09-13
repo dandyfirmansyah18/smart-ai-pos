@@ -1,6 +1,35 @@
 # Phased Implementation Plan: Smart AI POS & Merchant Engine
 
-This execution roadmap breaks down the **Smart AI POS & Merchant Engine** into small, atomic, test-driven phases. Each task is self-contained with exact file paths, interfaces, and testing instructions to ensure high code quality, predictability, and minimal token usage during development.
+This execution roadmap breaks down the **Smart AI POS & Merchant Engine** into small, atomic, test-driven phases. Each task is self-contained with exact file paths, interfaces, data models, environment configs, and testing instructions. It is specifically designed as an **autonomous blueprint for AI Agents** to reproduce or build this full-stack system from scratch in any environment.
+
+---
+
+## 🤖 AI Agent Execution Quick Reference
+
+### Environment & Secrets Management
+- **Backend Configuration**:
+  - `backend/config/config.example.yaml` (Tracked in Git as template)
+  - `backend/config/config.yaml` (Ignored in Git, created for runtime credentials: DB host/port/pass, Redis host/port, Vision API key)
+  - Environment override variables via Viper: `APP_ENV`, `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, `REDIS_ADDR`, `GEMINI_API_KEY`.
+- **Frontend Configuration**:
+  - `frontend/.env.example` (Tracked in Git as template)
+  - `frontend/.env` (Ignored in Git, local frontend runtime configuration)
+  - Variables:
+    - `NEXT_PUBLIC_API_URL=http://localhost:8080/api`
+    - `NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws`
+  - `frontend/.gitignore` must ignore `.env` and `.env*.local` while keeping `.env.example`.
+- **VS Code Debugger Configuration**:
+  - `.vscode/launch.json` configured for debugging API Server (`cmd/api`), Database Migrations (`cmd/migrate`), Database Seeder (`cmd/seed`), and active Go test packages.
+
+
+### Commands Execution Blueprint
+1. **Backend Tests**: `cd backend && go test -v ./...`
+2. **Database Migrations**: `go run backend/cmd/migrate/main.go`
+3. **Database Seeder**: `go run backend/cmd/seed/main.go`
+4. **Backend API Server**: `go run backend/cmd/api/main.go` (Runs on `:8080`)
+5. **Frontend Dev Server**: `cd frontend && npm install && npm run dev` (Runs on `:3000`)
+6. **Frontend Build Check**: `cd frontend && npm run build`
+7. **Terraform Validation**: `cd terraform/environments/staging && terraform init -backend=false && terraform validate`
 
 ---
 
@@ -263,7 +292,7 @@ Ensures POS registers and terminal UIs instantly synchronize stock updates when 
 
 ## Phase 7: AI Vision OCR Adapter
 
-Integrate an LLM Vision API client (Gemini 1.5 Pro or OpenAI GPT-4o) to scan paper receipt images and extract structured JSON expenses.
+Integrate an LLM Vision API client (Gemini 3.5 Flash Lite or OpenAI GPT-4o) to scan paper receipt images and extract structured JSON expenses.
 
 ### Task 7.1: Receipt Domain & Port Interface
 * **Files to create/modify**:
@@ -322,14 +351,30 @@ Integrate an LLM Vision API client (Gemini 1.5 Pro or OpenAI GPT-4o) to scan pap
 
 Establishing the Next.js foundation, styling, and server query configurations.
 
-### Task 8.1: NextJS Configuration, Theme, & Radix
+### Task 8.1: NextJS Configuration, Theme, & Environment Setup
 * **Files to create/modify**:
   * `frontend/app/layout.tsx`
   * `frontend/tailwind.config.js`
   * `frontend/package.json`
+  * `frontend/.env.example`
+  * `frontend/.env`
+  * `frontend/.gitignore`
 * **Details**:
-  * Install Tailwind CSS, Lucide icons, TanStack Query (`@tanstack/react-query`), and Axios.
-  * Create the global NextJS Layout wrapped inside custom React Query providers.
+  * Install Tailwind CSS, Lucide icons (`lucide-react`), TanStack Query (`@tanstack/react-query`), and Axios.
+  * Create `frontend/.env.example` (tracked template):
+    ```env
+    NEXT_PUBLIC_API_URL=http://localhost:8080/api
+    NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
+    ```
+  * Create `frontend/.env` (git-ignored local runtime config):
+    ```env
+    NEXT_PUBLIC_API_URL=http://localhost:8080/api
+    NEXT_PUBLIC_WS_URL=ws://localhost:8080/ws
+    ```
+  * Update `frontend/.gitignore` to ignore `.env` and `.env*.local` while preserving `!.env.example`.
+  * Create the global NextJS Layout wrapped inside custom React Query providers (`QueryClientProvider`).
+* **Testing Requirements**:
+  * Run `npm run build` in `frontend/` to verify zero build or linting errors.
 
 ---
 
@@ -396,11 +441,174 @@ Connecting Next.js users to the visual receipt scanner pipeline.
 
 ---
 
-## Phase 11: Infrastructure-as-Code (Terraform)
+## Phase 11: Authentication & Role-Based Access Control (RBAC)
+
+Securing internal application portals with JWT authentication and granular role-based permissions (Cashier, Kitchen, Warehouse, Manager/Admin).
+
+### Task 11.1: User Domain & Auth Security Core
+* **Files to create/modify**:
+  * `backend/internal/domain/user.go`
+  * `backend/migrations/000004_create_users_table.up.sql`
+  * `backend/migrations/000004_create_users_table.down.sql`
+  * `backend/pkg/utils/password.go`
+  * `backend/pkg/utils/jwt.go`
+* **Details**:
+  * Define `User` domain struct (`ID`, `Username`, `PasswordHash`, `Role` [`ADMIN`, `CASHIER`, `KITCHEN`, `WAREHOUSE`], `FullName`, `CreatedAt`, `UpdatedAt`).
+  * Create raw SQL migration script `000004_create_users_table` with `role` ENUM type.
+  * Implement password hashing & verification utility using `golang.org/x/crypto/bcrypt`.
+  * Implement JWT token generation and validation utility in `pkg/utils/jwt.go`.
+* **Testing Requirements**:
+  * `password_test.go` and `jwt_test.go` verifying correct hashing, password validation, token signing, and token claims parsing.
+
+---
+
+### Task 11.2: Auth REST Handlers & RBAC Middleware
+* **Files to create/modify**:
+  * `backend/internal/dto/auth_dto.go`
+  * `backend/internal/adapters/handlers/rest/auth_handler.go`
+  * `backend/internal/adapters/handlers/rest/middleware/auth_middleware.go`
+* **Details**:
+  * Define `LoginRequest`, `LoginResponse`, and `UserResponse` in `internal/dto/auth_dto.go`.
+  * Implement `AuthHandler.Login` (`POST /api/auth/login`) and `AuthHandler.Me` (`GET /api/auth/me`).
+  * Implement Gin middleware `AuthMiddleware(secretKey)` to parse JWT Bearer headers and set context user claims.
+  * Implement `RequireRole(allowedRoles ...string)` middleware guard for protecting restricted API routes.
+* **Testing Requirements**:
+  * Handler tests checking login success with valid credentials, 401 Unauthorized for invalid passwords, and 403 Forbidden for unauthorized role access.
+
+---
+
+### Task 11.3: Frontend Auth State & Internal Portal Login
+* **Files to create/modify**:
+  * `frontend/context/auth-context.tsx`
+  * `frontend/app/login/page.tsx`
+  * `frontend/components/protected-route.tsx`
+* **Details**:
+  * Create React Auth Context managing JWT token, authenticated user session, and login/logout methods.
+  * Build clean Login Screen UI (`/login`) with username/password inputs and role-based automatic navigation.
+  * Implement `ProtectedRoute` wrapper component restricting route access based on required user roles (`/portal/kitchen`, `/portal/warehouse`, `/portal/finance`, `/dashboard`).
+* **Testing Requirements**:
+  * Verify login form submission redirects users to their appropriate portal dashboard based on assigned role.
+
+---
+
+## Phase 12: Kitchen Display System (KDS) Portal
+
+Real-time order ticket processing and order preparation workflow for kitchen staff in F&B / warung environments.
+
+### Task 12.1: Kitchen Order Workflow Backend API
+* **Files to create/modify**:
+  * `backend/internal/dto/kitchen_dto.go`
+  * `backend/internal/adapters/handlers/rest/kitchen_handler.go`
+* **Details**:
+  * Support kitchen order lifecycle statuses: `PENDING` -> `PREPARING` -> `READY` -> `SERVED`.
+  * Implement `GET /api/kitchen/orders` returning active pending and preparing order queues.
+  * Implement `PATCH /api/kitchen/orders/:id/status` (`dto.UpdateOrderStatusRequest`) to update status and trigger WebSocket broadcast event to POS terminals and KDS screens.
+* **Testing Requirements**:
+  * Unit and integration handler tests verifying valid status state transitions and WebSocket broadcast dispatch.
+
+---
+
+### Task 12.2: Kitchen Display System (KDS) Portal UI
+* **Files to create/modify**:
+  * `frontend/app/portal/kitchen/page.tsx`
+  * `frontend/components/kitchen-ticket-card.tsx`
+* **Details**:
+  * Build real-time KDS portal view displaying order ticket cards sorted by order creation timestamp.
+  * Display ticket details: order ID, table number / order type (`Dine-In`, `Takeaway`), items list, quantity, and live elapsed preparation timer.
+  * Interactive status transition buttons: "Start Preparing" (Pending -> Preparing), "Mark Ready" (Preparing -> Ready), "Mark Served" (Ready -> Served).
+  * Integrate audio chime alert and visual card pulse when new WebSocket orders arrive.
+* **Testing Requirements**:
+  * Verify UI ticket cards update dynamically upon receiving WebSocket events without requiring full page refresh.
+
+---
+
+## Phase 13: Internal Management Portal - Warehouse & Stock Inventory
+
+Inventory management, SKU cost price (harga modal / COGS), reorder level alerts, and stock replenishment receiving.
+
+### Task 13.1: Product Cost Price (Harga Modal) & Replenishment Backend API
+* **Files to create/modify**:
+  * `backend/migrations/000005_add_cost_price_and_reorder_level.up.sql`
+  * `backend/migrations/000005_add_cost_price_and_reorder_level.down.sql`
+  * `backend/internal/dto/inventory_dto.go`
+  * `backend/internal/adapters/handlers/rest/inventory_handler.go`
+* **Details**:
+  * Add `cost_price` (harga modal) and `reorder_level` (minimum stock threshold) columns to `products` table via migration `000005`.
+  * Update `domain.Product` and `dto.ProductResponse` to include `CostPrice` and `ReorderLevel`.
+  * Implement `POST /api/inventory/replenish` (`dto.ReplenishStockRequest`) to log stock inward receipts and increment product stock quantities.
+  * Implement `GET /api/inventory/alerts` returning list of products where `stock_quantity <= reorder_level`.
+* **Testing Requirements**:
+  * Unit tests for stock replenishment transactions and low stock alert query logic.
+
+---
+
+### Task 13.2: Warehouse Inventory Management Portal UI
+* **Files to create/modify**:
+  * `frontend/app/portal/warehouse/page.tsx`
+  * `frontend/components/stock-replenish-modal.tsx`
+* **Details**:
+  * Build Warehouse Management Portal UI displaying catalog grid with stock levels, selling price vs cost price (harga modal), profit margin %, and stock status badges (In Stock, Low Stock, Out of Stock).
+  * Build Stock Replenishment Modal allowing warehouse staff to quickly update stock quantities with receiving notes and updated cost price.
+  * Render prominent Low Stock Alert notification banner highlighting items requiring immediate reorder.
+* **Testing Requirements**:
+  * Verify replenishment form submission updates stock quantities and table rows seamlessly.
+
+---
+
+## Phase 14: Profit & Loss (Laba Rugi) & Advanced F&B Analytics
+
+Financial reporting engine, Cost of Goods Sold (COGS) accounting, Gross & Net profit analysis, and F&B Table & Order Type management.
+
+### Task 14.1: Financial Profit & Loss (Laba Rugi) Engine API
+* **Files to create/modify**:
+  * `backend/internal/dto/finance_dto.go`
+  * `backend/internal/ports/inbound/finance_usecase.go`
+  * `backend/internal/adapters/handlers/rest/finance_handler.go`
+* **Details**:
+  * Implement Financial Calculation Engine:
+    * `Total Revenue` = Sum of completed order total amounts.
+    * `Total COGS (Harga Modal)` = Sum of `(item.Quantity * product.CostPrice)` for all sold items.
+    * `Gross Profit` = `Total Revenue - Total COGS`.
+    * `Profit Margin %` = `(Gross Profit / Total Revenue) * 100`.
+  * Implement `GET /api/finance/profit-loss?start_date=&end_date=` returning summary metrics and daily breakdown time-series.
+  * Implement `GET /api/finance/top-profitable-items` returning SKU rankings sorted by highest profit margin contribution.
+* **Testing Requirements**:
+  * Unit tests asserting mathematical accuracy of revenue, COGS, gross profit, and margin % calculations against sample sales datasets.
+
+---
+
+### Task 14.2: F&B Table & Order Type Management
+* **Files to create/modify**:
+  * `backend/migrations/000006_add_order_type_and_table.up.sql`
+  * `backend/migrations/000006_add_order_type_and_table.down.sql`
+  * `backend/internal/dto/order_dto.go`
+* **Details**:
+  * Add `order_type` (`DINE_IN`, `TAKEAWAY`, `DELIVERY`), `table_number`, and `payment_method` (`CASH`, `QRIS`, `DEBIT`) to `orders` schema via migration `000006`.
+  * Update `CheckoutRequest` DTO and POS checkout handler to capture order type, table number, and payment method details.
+
+---
+
+### Task 14.3: Financial & Profit-Loss Dashboard UI
+* **Files to create/modify**:
+  * `frontend/app/portal/finance/page.tsx`
+  * `frontend/components/profit-loss-card.tsx`
+  * `frontend/components/top-margin-items-table.tsx`
+* **Details**:
+  * Build Executive Financial Portal Dashboard displaying:
+    * Financial Metric Cards: Total Gross Revenue, Total HPP/COGS (Harga Modal), Gross Profit, and Profit Margin %.
+    * Interactive Profit & Loss trend chart (Revenue vs COGS vs Gross Profit over time).
+    * Top Profitable Items table ranking SKUs by profit margin %.
+    * Filter controls for pre-set date ranges (Today, This Week, This Month, Custom).
+* **Testing Requirements**:
+  * Verify P&L metrics update correctly when changing date range filters.
+
+---
+
+## Phase 15: Infrastructure-as-Code (Terraform)
 
 Automating highly available enterprise cloud configurations.
 
-### Task 11.1: Database (RDS & Redis ElastiCache) modules
+### Task 15.1: Database (RDS & Redis ElastiCache) modules
 * **Files to create/modify**:
   * `terraform/modules/rds/main.tf`
   * `terraform/modules/redis/main.tf`
@@ -410,7 +618,7 @@ Automating highly available enterprise cloud configurations.
 
 ---
 
-### Task 11.2: App Container Platform module (AWS App Runner)
+### Task 15.2: App Container Platform module (AWS App Runner)
 * **Files to create/modify**:
   * `terraform/modules/app_runner/main.tf`
   * `terraform/modules/s3/main.tf`
@@ -420,7 +628,7 @@ Automating highly available enterprise cloud configurations.
 
 ---
 
-### Task 11.3: Terraform Staging Environment
+### Task 15.3: Terraform Staging Environment
 * **Files to create/modify**:
   * `terraform/environments/staging/main.tf`
   * `terraform/environments/staging/variables.tf`
@@ -432,11 +640,11 @@ Automating highly available enterprise cloud configurations.
 
 ---
 
-## Phase 12: Continuous Integration (CI/CD)
+## Phase 16: Continuous Integration (CI/CD)
 
 Enforcing quality controls automatically with GitHub Actions.
 
-### Task 12.1: Automated CI Pipeline workflow
+### Task 16.1: Automated CI Pipeline workflow
 * **Files to create/modify**:
   * `.github/workflows/ci.yml`
 * **Details**:
@@ -445,3 +653,4 @@ Enforcing quality controls automatically with GitHub Actions.
     1. **Backend**: Install Go, lint code using `golangci-lint`, run tests including race-detector: `go test -race -v ./...`.
     2. **Frontend**: Install NodeJS, run `npm ci`, verify build checks `npm run build` and UI linter rules.
     3. **Infrastructure**: Setup Terraform, execute `terraform fmt -check`, run `terraform validate`.
+

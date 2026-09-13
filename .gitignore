@@ -9,10 +9,12 @@ Thumbs.db
 
 # IDE & Editor files
 .idea/
-.vscode/
+.vscode/*
+!.vscode/launch.json
 *.swp
 *.swo
 *~
+
 
 # Environment & Config local files
 config.yaml
