@@ -18,3 +18,9 @@ pnpm-debug.log*
 
 # TypeScript
 *.tsbuildinfo
+
+# Local environment variables
+.env*.local
+.env
+!.env.example
+

@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pos-backend/internal/domain"
+	"github.com/pos-backend/internal/dto"
 	"github.com/pos-backend/internal/ports/outbound"
 )
 
@@ -39,12 +40,7 @@ func NewOrderUseCaseImpl(
 	}
 }
 
-type updatedStockInfo struct {
-	sku      string
-	newStock int
-}
-
-func (s *OrderUseCaseImpl) Checkout(ctx context.Context, req CheckoutRequest) (*domain.Order, error) {
+func (s *OrderUseCaseImpl) Checkout(ctx context.Context, req dto.CheckoutRequest) (*domain.Order, error) {
 	if req.IdempotencyKey == "" {
 		return nil, domain.ErrInvalidOrder
 	}
@@ -91,7 +87,7 @@ func (s *OrderUseCaseImpl) Checkout(ctx context.Context, req CheckoutRequest) (*
 	// 4. Process each item: row-level pessimistic locking & stock decrement
 	var totalAmount float64
 	orderItems := make([]domain.OrderItem, 0, len(req.Items))
-	stockUpdates := make([]updatedStockInfo, 0, len(req.Items))
+	stockUpdates := make([]dto.StockUpdateInfo, 0, len(req.Items))
 
 	for _, item := range req.Items {
 		if item.Quantity <= 0 {
@@ -113,7 +109,7 @@ func (s *OrderUseCaseImpl) Checkout(ctx context.Context, req CheckoutRequest) (*
 			return nil, err
 		}
 
-		stockUpdates = append(stockUpdates, updatedStockInfo{sku: item.SKU, newStock: newStock})
+		stockUpdates = append(stockUpdates, dto.StockUpdateInfo{SKU: item.SKU, NewStock: newStock})
 
 		itemTotal := float64(item.Quantity) * product.Price
 		totalAmount += itemTotal
@@ -160,7 +156,7 @@ func (s *OrderUseCaseImpl) Checkout(ctx context.Context, req CheckoutRequest) (*
 	// 8. Broadcast real-time stock update events to connected WebSocket clients
 	if s.broadcaster != nil {
 		for _, update := range stockUpdates {
-			s.broadcaster.BroadcastStockUpdate(update.sku, update.newStock)
+			s.broadcaster.BroadcastStockUpdate(update.SKU, update.NewStock)
 		}
 	}
 

@@ -12,18 +12,20 @@ import (
 )
 
 type Server struct {
-	router       *gin.Engine
-	cfg          *config.Config
-	productRepo  outbound.ProductRepository
-	orderUseCase inbound.OrderUseCase
-	hub          *ws.Hub
+	router         *gin.Engine
+	cfg            *config.Config
+	productRepo    outbound.ProductRepository
+	orderUseCase   inbound.OrderUseCase
+	hub            *ws.Hub
+	receiptUseCase inbound.ReceiptUseCase
 }
 
 func NewServer(
 	cfg *config.Config,
 	productRepo outbound.ProductRepository,
 	orderUseCase inbound.OrderUseCase,
-	hub ...*ws.Hub,
+	hub *ws.Hub,
+	receiptUseCase ...inbound.ReceiptUseCase,
 ) *Server {
 	if cfg.Env == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -41,17 +43,18 @@ func NewServer(
 		MaxAge:           12 * time.Hour,
 	}))
 
-	var h *ws.Hub
-	if len(hub) > 0 {
-		h = hub[0]
+	var ru inbound.ReceiptUseCase
+	if len(receiptUseCase) > 0 {
+		ru = receiptUseCase[0]
 	}
 
 	s := &Server{
-		router:       r,
-		cfg:          cfg,
-		productRepo:  productRepo,
-		orderUseCase: orderUseCase,
-		hub:          h,
+		router:         r,
+		cfg:            cfg,
+		productRepo:    productRepo,
+		orderUseCase:   orderUseCase,
+		hub:            hub,
+		receiptUseCase: ru,
 	}
 
 	s.setupRoutes()
@@ -78,6 +81,12 @@ func (s *Server) setupRoutes() {
 
 		orderHandler := NewOrderHandler(s.orderUseCase)
 		api.POST("/orders/checkout", orderHandler.Checkout)
+
+		if s.receiptUseCase != nil {
+			receiptHandler := NewReceiptHandler(s.receiptUseCase)
+			api.POST("/receipts/scan", receiptHandler.ScanReceipt)
+			api.GET("/receipts/audits", receiptHandler.ListAudits)
+		}
 	}
 }
 

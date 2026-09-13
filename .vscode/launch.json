@@ -1,0 +1,40 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug Backend API Server",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/backend/cmd/api/main.go",
+      "cwd": "${workspaceFolder}/backend",
+      "env": {
+        "APP_ENV": "development"
+      }
+    },
+    {
+      "name": "Debug DB Migrations CLI",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/backend/cmd/migrate/main.go",
+      "cwd": "${workspaceFolder}/backend"
+    },
+    {
+      "name": "Debug DB Seeder CLI",
+      "type": "go",
+      "request": "launch",
+      "mode": "auto",
+      "program": "${workspaceFolder}/backend/cmd/seed/main.go",
+      "cwd": "${workspaceFolder}/backend"
+    },
+    {
+      "name": "Debug Current Go Test Package",
+      "type": "go",
+      "request": "launch",
+      "mode": "test",
+      "program": "${fileDirname}",
+      "cwd": "${workspaceFolder}/backend"
+    }
+  ]
+}

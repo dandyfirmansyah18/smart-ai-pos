@@ -34,7 +34,7 @@ func TestProductHandler_ListProducts(t *testing.T) {
 	orderUseCase := inbound.NewOrderUseCaseImpl(nil, mockProductRepo, mockOrderRepo, mockLockService)
 
 	cfg := &config.Config{Port: "8080", Env: "test"}
-	server := rest.NewServer(cfg, mockProductRepo, orderUseCase)
+	server := rest.NewServer(cfg, mockProductRepo, orderUseCase, nil)
 
 	req, _ := http.NewRequest(http.MethodGet, "/api/products", nil)
 	w := httptest.NewRecorder()
@@ -71,7 +71,7 @@ func TestProductHandler_GetProductBySKU(t *testing.T) {
 
 	orderUseCase := inbound.NewOrderUseCaseImpl(nil, mockProductRepo, mockOrderRepo, mockLockService)
 	cfg := &config.Config{Port: "8080", Env: "test"}
-	server := rest.NewServer(cfg, mockProductRepo, orderUseCase)
+	server := rest.NewServer(cfg, mockProductRepo, orderUseCase, nil)
 
 	// Test found
 	req, _ := http.NewRequest(http.MethodGet, "/api/products/SKU-LATTE", nil)

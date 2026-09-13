@@ -8,6 +8,7 @@ import (
 	"github.com/pos-backend/internal/adapters/handlers/ws"
 	"github.com/pos-backend/internal/adapters/infrastructure/pg"
 	"github.com/pos-backend/internal/adapters/infrastructure/redis"
+	"github.com/pos-backend/internal/adapters/infrastructure/vision"
 	"github.com/pos-backend/internal/ports/inbound"
 )
 
@@ -37,18 +38,22 @@ func main() {
 	}
 	lockService := redis.NewRedisLockService(redisClient)
 
-	// 5. Initialize Driven Adapters (Repositories)
+	// 5. Initialize Driven Adapters (Repositories & Clients)
 	productRepo := pg.NewProductPGRepository(db)
 	orderRepo := pg.NewOrderPGRepository(db)
+	receiptRepo := pg.NewReceiptPGRepository(db)
+	visionClient := vision.NewVisionClientImpl(cfg)
 
-	// 6. Initialize Driver Use Cases with WebSocket Broadcaster
+	// 6. Initialize Driver Use Cases
 	orderUseCase := inbound.NewOrderUseCaseImpl(db, productRepo, orderRepo, lockService, wsHub)
+	receiptUseCase := inbound.NewReceiptUseCaseImpl(visionClient, receiptRepo)
 
 	// 7. Initialize REST & WebSocket HTTP Server
-	server := rest.NewServer(cfg, productRepo, orderUseCase, wsHub)
+	server := rest.NewServer(cfg, productRepo, orderUseCase, wsHub, receiptUseCase)
 
 	log.Printf("Starting Smart AI POS Engine Server on port :%s (env: %s)...", cfg.Port, cfg.Env)
 	log.Printf("Real-time WebSocket endpoint available at ws://localhost:%s/ws", cfg.Port)
+	log.Printf("AI Receipt Scanning endpoint available at POST http://localhost:%s/api/receipts/scan", cfg.Port)
 
 	if err := server.Run(); err != nil {
 		log.Fatalf("Server shutdown with error: %v", err)
