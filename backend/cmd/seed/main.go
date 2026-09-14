@@ -2,13 +2,15 @@ package main
 
 import (
 	"context"
+	"database/sql"
+	"errors"
 	"fmt"
 	"log"
 
 	"github.com/google/uuid"
+	"github.com/pos-backend/config"
 	"github.com/pos-backend/internal/adapters/infrastructure/pg"
 	"github.com/pos-backend/internal/domain"
-	"github.com/pos-backend/config"
 )
 
 func main() {
@@ -24,6 +26,28 @@ func main() {
 	}
 
 	ctx := context.Background()
+
+	// 1. Ensure seeds_history table exists
+	createTableSQL := `
+	CREATE TABLE IF NOT EXISTS seeds_history (
+		seed_name VARCHAR(255) PRIMARY KEY,
+		applied_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+	);`
+	if _, err := db.ExecContext(ctx, createTableSQL); err != nil {
+		log.Fatalf("Failed to create seeds_history table: %v", err)
+	}
+
+	seedName := "initial_products_catalog_v1"
+
+	// 2. Check if seed has already been applied
+	var appliedAt sql.NullTime
+	err = db.QueryRowContext(ctx, "SELECT applied_at FROM seeds_history WHERE seed_name = $1", seedName).Scan(&appliedAt)
+	if err == nil && appliedAt.Valid {
+		log.Printf("Seed '%s' has already been applied on %s. Skipping seeder execution.", seedName, appliedAt.Time.Format("2006-01-02 15:04:05"))
+		return
+	} else if err != nil && !errors.Is(err, sql.ErrNoRows) {
+		log.Fatalf("Failed checking seeds history: %v", err)
+	}
 
 	seedProducts := []domain.Product{
 		{
@@ -68,7 +92,7 @@ func main() {
 		},
 	}
 
-	log.Println("Seeding initial products catalog into database...")
+	log.Printf("Seeding initial products catalog (%s) into database...", seedName)
 
 	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
@@ -93,9 +117,15 @@ func main() {
 		log.Printf("Seeded product: %s | SKU: %s | Price: $%.2f | Stock: %d", p.Name, p.SKU, p.Price, p.StockQuantity)
 	}
 
+	// Record seed execution in seeds_history
+	_, err = tx.ExecContext(ctx, "INSERT INTO seeds_history (seed_name) VALUES ($1) ON CONFLICT (seed_name) DO NOTHING", seedName)
+	if err != nil {
+		log.Fatalf("Failed recording seed history: %v", err)
+	}
+
 	if err := tx.Commit(); err != nil {
 		log.Fatalf("Failed committing seed transaction: %v", err)
 	}
 
-	fmt.Printf("\nSuccessfully seeded %d products into PostgreSQL database!\n", len(seedProducts))
+	fmt.Printf("\nSuccessfully executed and recorded seeder '%s' with %d products!\n", seedName, len(seedProducts))
 }

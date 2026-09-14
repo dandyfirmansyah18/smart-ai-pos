@@ -22,6 +22,7 @@ type Config struct {
 	RedisDB       int
 	GeminiAPIKey  string
 	OpenAIAPIKey  string
+	JWTSecret     string
 }
 
 type AppConfig struct {
@@ -46,6 +47,9 @@ type AppConfig struct {
 		GeminiAPIKey string `mapstructure:"gemini_api_key"`
 		OpenAIAPIKey string `mapstructure:"openai_api_key"`
 	} `mapstructure:"vision"`
+	JWT struct {
+		Secret string `mapstructure:"secret"`
+	} `mapstructure:"jwt"`
 }
 
 func Load() *Config {
@@ -63,6 +67,7 @@ func Load() *Config {
 	v.SetDefault("redis.addr", "localhost:6379")
 	v.SetDefault("redis.password", "")
 	v.SetDefault("redis.db", 0)
+	v.SetDefault("jwt.secret", "super-secret-pos-jwt-key-2026")
 
 	// Viper config search paths
 	v.SetConfigName("config")
@@ -87,6 +92,7 @@ func Load() *Config {
 	v.BindEnv("redis.db", "REDIS_DB")
 	v.BindEnv("vision.gemini_api_key", "GEMINI_API_KEY")
 	v.BindEnv("vision.openai_api_key", "OPENAI_API_KEY")
+	v.BindEnv("jwt.secret", "JWT_SECRET")
 
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
@@ -100,6 +106,11 @@ func Load() *Config {
 	var appCfg AppConfig
 	if err := v.Unmarshal(&appCfg); err != nil {
 		log.Printf("Warning: Viper unmarshal error: %v", err)
+	}
+
+	jwtSecret := appCfg.JWT.Secret
+	if jwtSecret == "" {
+		jwtSecret = "super-secret-pos-jwt-key-2026"
 	}
 
 	return &Config{
@@ -116,6 +127,7 @@ func Load() *Config {
 		RedisDB:       appCfg.Redis.DB,
 		GeminiAPIKey:  appCfg.Vision.GeminiAPIKey,
 		OpenAIAPIKey:  appCfg.Vision.OpenAIAPIKey,
+		JWTSecret:     jwtSecret,
 	}
 }
 

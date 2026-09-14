@@ -6,6 +6,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/pos-backend/config"
+	"github.com/pos-backend/internal/adapters/handlers/rest/middleware"
 	"github.com/pos-backend/internal/adapters/handlers/ws"
 	"github.com/pos-backend/internal/ports/inbound"
 	"github.com/pos-backend/internal/ports/outbound"
@@ -18,6 +19,7 @@ type Server struct {
 	orderUseCase   inbound.OrderUseCase
 	hub            *ws.Hub
 	receiptUseCase inbound.ReceiptUseCase
+	authUseCase    inbound.AuthUseCase
 }
 
 func NewServer(
@@ -25,7 +27,7 @@ func NewServer(
 	productRepo outbound.ProductRepository,
 	orderUseCase inbound.OrderUseCase,
 	hub *ws.Hub,
-	receiptUseCase ...inbound.ReceiptUseCase,
+	optionalDeps ...interface{},
 ) *Server {
 	if cfg.Env == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -44,8 +46,15 @@ func NewServer(
 	}))
 
 	var ru inbound.ReceiptUseCase
-	if len(receiptUseCase) > 0 {
-		ru = receiptUseCase[0]
+	var au inbound.AuthUseCase
+
+	for _, dep := range optionalDeps {
+		switch d := dep.(type) {
+		case inbound.ReceiptUseCase:
+			ru = d
+		case inbound.AuthUseCase:
+			au = d
+		}
 	}
 
 	s := &Server{
@@ -55,6 +64,7 @@ func NewServer(
 		orderUseCase:   orderUseCase,
 		hub:            hub,
 		receiptUseCase: ru,
+		authUseCase:    au,
 	}
 
 	s.setupRoutes()
@@ -86,6 +96,17 @@ func (s *Server) setupRoutes() {
 			receiptHandler := NewReceiptHandler(s.receiptUseCase)
 			api.POST("/receipts/scan", receiptHandler.ScanReceipt)
 			api.GET("/receipts/audits", receiptHandler.ListAudits)
+		}
+
+		if s.authUseCase != nil {
+			authHandler := NewAuthHandler(s.authUseCase)
+			api.POST("/auth/login", authHandler.Login)
+
+			authProtected := api.Group("")
+			authProtected.Use(middleware.AuthMiddleware(s.cfg.JWTSecret))
+			{
+				authProtected.GET("/auth/me", authHandler.Me)
+			}
 		}
 	}
 }

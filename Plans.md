@@ -173,7 +173,7 @@ We implement PostgreSQL infrastructure. Database queries use SQL transactions (`
 
 ---
 
-### Task 2.4: Database Migrations & Seed Data Setup
+### Task 2.4: Versioned Database Migrations & Seed Data Setup
 * **Files to create/modify**:
   * `backend/migrations/000001_create_products_table.up.sql`
   * `backend/migrations/000001_create_products_table.down.sql`
@@ -185,10 +185,15 @@ We implement PostgreSQL infrastructure. Database queries use SQL transactions (`
   * `backend/cmd/seed/main.go`
 * **Details**:
   * Create raw SQL migration up/down scripts for `products`, `orders`, `order_items`, `receipt_audits`, and custom `order_status` ENUM type.
-  * Implement CLI command `cmd/migrate/main.go` to execute database schema migrations against PostgreSQL.
-  * Implement CLI seeder `cmd/seed/main.go` to populate initial product catalog stock items for local development & testing.
+  * Implement version-tracked migration CLI command `cmd/migrate/main.go`:
+    * Automatically creates and maintains a `schema_migrations` tracking table.
+    * Checks applied migration versions and idempotently skips migration files that have already been executed.
+  * Implement version-tracked seeder CLI command `cmd/seed/main.go`:
+    * Automatically creates and maintains a `seeds_history` tracking table.
+    * Checks applied seed versions (e.g., `initial_products_catalog_v1`) and skips re-seeding if already executed.
 * **Testing Requirements**:
   * Verify migration scripts execute cleanly up & down without SQL syntax errors.
+  * Verify running migration and seeder multiple times is fully idempotent and skips already applied scripts.
 
 
 ---
