@@ -51,7 +51,7 @@ func main() {
 	authUseCase := inbound.NewAuthUseCaseImpl(userRepo, cfg.JWTSecret)
 
 	// 7. Initialize REST & WebSocket HTTP Server
-	server := rest.NewServer(cfg, productRepo, orderUseCase, wsHub, receiptUseCase, authUseCase)
+	server := rest.NewServer(cfg, productRepo, orderUseCase, wsHub, receiptUseCase, authUseCase, orderRepo)
 
 	log.Printf("Starting Smart AI POS Engine Server on port :%s (env: %s)...", cfg.Port, cfg.Env)
 	log.Printf("Real-time WebSocket endpoint available at ws://localhost:%s/ws", cfg.Port)

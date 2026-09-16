@@ -16,6 +16,7 @@ type Server struct {
 	router         *gin.Engine
 	cfg            *config.Config
 	productRepo    outbound.ProductRepository
+	orderRepo      outbound.OrderRepository
 	orderUseCase   inbound.OrderUseCase
 	hub            *ws.Hub
 	receiptUseCase inbound.ReceiptUseCase
@@ -47,6 +48,7 @@ func NewServer(
 
 	var ru inbound.ReceiptUseCase
 	var au inbound.AuthUseCase
+	var ordRepo outbound.OrderRepository
 
 	for _, dep := range optionalDeps {
 		switch d := dep.(type) {
@@ -54,6 +56,8 @@ func NewServer(
 			ru = d
 		case inbound.AuthUseCase:
 			au = d
+		case outbound.OrderRepository:
+			ordRepo = d
 		}
 	}
 
@@ -61,6 +65,7 @@ func NewServer(
 		router:         r,
 		cfg:            cfg,
 		productRepo:    productRepo,
+		orderRepo:      ordRepo,
 		orderUseCase:   orderUseCase,
 		hub:            hub,
 		receiptUseCase: ru,
@@ -88,6 +93,16 @@ func (s *Server) setupRoutes() {
 		productHandler := NewProductHandler(s.productRepo)
 		api.GET("/products", productHandler.ListProducts)
 		api.GET("/products/:sku", productHandler.GetProductBySKU)
+		if s.authUseCase != nil {
+			productProtected := api.Group("/products")
+			productProtected.Use(middleware.AuthMiddleware(s.cfg.JWTSecret))
+			productProtected.Use(middleware.RequireRole("ADMIN", "WAREHOUSE"))
+			{
+				productProtected.POST("", productHandler.CreateProduct)
+			}
+		} else {
+			api.POST("/products", productHandler.CreateProduct)
+		}
 
 		orderHandler := NewOrderHandler(s.orderUseCase)
 		api.POST("/orders/checkout", orderHandler.Checkout)
@@ -96,6 +111,19 @@ func (s *Server) setupRoutes() {
 			receiptHandler := NewReceiptHandler(s.receiptUseCase)
 			api.POST("/receipts/scan", receiptHandler.ScanReceipt)
 			api.GET("/receipts/audits", receiptHandler.ListAudits)
+		}
+
+		if s.orderRepo != nil {
+			kitchenHandler := NewKitchenHandler(s.orderRepo, s.hub)
+			kitchenGroup := api.Group("/kitchen")
+			if s.authUseCase != nil {
+				kitchenGroup.Use(middleware.AuthMiddleware(s.cfg.JWTSecret))
+				kitchenGroup.Use(middleware.RequireRole("ADMIN", "KITCHEN", "CASHIER"))
+			}
+			{
+				kitchenGroup.GET("/orders", kitchenHandler.ListActiveOrders)
+				kitchenGroup.PATCH("/orders/:id/status", kitchenHandler.UpdateOrderStatus)
+			}
 		}
 
 		if s.authUseCase != nil {

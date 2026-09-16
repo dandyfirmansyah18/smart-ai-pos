@@ -55,3 +55,12 @@ export const fetchReceiptAudits = async (): Promise<ReceiptAudit[]> => {
   const response = await api.get<ReceiptAudit[]>('/receipts/audits');
   return response.data;
 };
+
+export const fetchKitchenOrders = async (): Promise<Order[]> => {
+  const response = await api.get<Order[]>('/kitchen/orders');
+  return response.data;
+};
+
+export const updateOrderStatus = async (orderId: string, status: string): Promise<void> => {
+  await api.patch(`/kitchen/orders/${orderId}/status`, { status });
+};

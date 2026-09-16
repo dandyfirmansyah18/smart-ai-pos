@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/google/uuid"
 	"github.com/pos-backend/internal/domain"
 )
 
@@ -47,6 +48,14 @@ func (m *MockProductRepository) ListAll(ctx context.Context) ([]domain.Product, 
 		result = append(result, *p)
 	}
 	return result, nil
+}
+
+func (m *MockProductRepository) CreateProduct(ctx context.Context, product *domain.Product) error {
+	if product.ID == uuid.Nil {
+		product.ID = uuid.New()
+	}
+	m.Products[product.SKU] = product
+	return nil
 }
 
 // Compile-time check to ensure MockProductRepository implements ProductRepository

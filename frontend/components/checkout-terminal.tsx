@@ -5,6 +5,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchProducts, checkoutOrder } from '../services/api';
 import { Product, CartItem, Order } from '../types';
 import { useWebSocketSync } from '../hooks/use-websocket';
+import { formatIDR } from '../utils/format';
 import {
   ShoppingBag,
   Plus,
@@ -239,8 +240,8 @@ export function CheckoutTerminal() {
                   </div>
 
                   <div className="mt-4 pt-4 border-t border-gray-700/50 flex items-center justify-between">
-                    <div className="text-lg font-black text-white">
-                      ${product.price.toFixed(2)}
+                    <div className="text-sm font-black text-white">
+                      {formatIDR(product.price)}
                     </div>
 
                     <button
@@ -264,7 +265,7 @@ export function CheckoutTerminal() {
       </div>
 
       {/* Cart Summary Sidebar (4 Cols) */}
-      <div className="lg:col-span-4 glass-panel rounded-2xl p-6 flex flex-col justify-between border border-gray-700/50">
+      <div className="lg:col-span-4 glass-panel rounded-2xl p-6 flex flex-col justify-between border border-gray-700/50 sticky top-6 h-[calc(100vh-3rem)]">
         <div>
           <div className="flex items-center justify-between pb-4 border-b border-gray-700/50 mb-4">
             <div className="flex items-center space-x-2">
@@ -294,7 +295,7 @@ export function CheckoutTerminal() {
               </p>
             </div>
           ) : (
-            <div className="space-y-3 max-h-[380px] overflow-y-auto pr-1">
+            <div className="space-y-3 max-h-[calc(100vh-22rem)] overflow-y-auto pr-1">
               {cart.map((item) => (
                 <div
                   key={item.product.id}
@@ -303,7 +304,7 @@ export function CheckoutTerminal() {
                   <div className="flex-1 pr-2">
                     <h4 className="text-xs font-bold text-gray-200">{item.product.name}</h4>
                     <span className="text-[10px] text-gray-400">
-                      ${item.product.price.toFixed(2)} each
+                      {formatIDR(item.product.price)} each
                     </span>
                   </div>
 
@@ -340,15 +341,15 @@ export function CheckoutTerminal() {
         <div className="pt-4 border-t border-gray-700/50 mt-6 space-y-3">
           <div className="flex justify-between text-xs text-gray-400">
             <span>Subtotal</span>
-            <span>${subtotal.toFixed(2)}</span>
+            <span>{formatIDR(subtotal)}</span>
           </div>
           <div className="flex justify-between text-xs text-gray-400">
             <span>Est. Sales Tax (8%)</span>
-            <span>${tax.toFixed(2)}</span>
+            <span>{formatIDR(tax)}</span>
           </div>
           <div className="flex justify-between text-base font-black text-white pt-2 border-t border-gray-700/40">
             <span>Total Pay</span>
-            <span className="text-brand-500">${total.toFixed(2)}</span>
+            <span className="text-brand-500">{formatIDR(total)}</span>
           </div>
 
           <button
@@ -394,7 +395,7 @@ export function CheckoutTerminal() {
               <div className="flex justify-between">
                 <span className="text-gray-400">Total Paid:</span>
                 <span className="font-bold text-white">
-                  ${lastCompletedOrder.total_amount.toFixed(2)}
+                  {formatIDR(lastCompletedOrder.total_amount)}
                 </span>
               </div>
               <div className="flex justify-between">

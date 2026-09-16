@@ -34,6 +34,13 @@ type StockUpdateEvent struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
+type OrderStatusUpdateEvent struct {
+	Type      string    `json:"type"`
+	ID        string    `json:"id"`
+	Status    string    `json:"status"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
 type Client struct {
 	hub  *Hub
 	conn *websocket.Conn
@@ -101,6 +108,23 @@ func (h *Hub) BroadcastStockUpdate(sku string, newStock int) {
 	payload, err := json.Marshal(event)
 	if err != nil {
 		log.Printf("Error marshaling StockUpdateEvent: %v", err)
+		return
+	}
+
+	h.broadcast <- payload
+}
+
+func (h *Hub) BroadcastOrderStatusUpdate(orderID string, status string) {
+	event := OrderStatusUpdateEvent{
+		Type:      "order_status_update",
+		ID:        orderID,
+		Status:    status,
+		UpdatedAt: time.Now(),
+	}
+
+	payload, err := json.Marshal(event)
+	if err != nil {
+		log.Printf("Error marshaling OrderStatusUpdateEvent: %v", err)
 		return
 	}
 

@@ -55,5 +55,15 @@ func (m *MockOrderRepository) UpdateStatus(ctx context.Context, id string, statu
 	return nil
 }
 
+func (m *MockOrderRepository) ListActiveOrders(ctx context.Context) ([]domain.Order, error) {
+	var active []domain.Order
+	for _, o := range m.Orders {
+		if o.Status == "PENDING" || o.Status == "PREPARING" || o.Status == "READY" {
+			active = append(active, *o)
+		}
+	}
+	return active, nil
+}
+
 // Compile-time check to ensure MockOrderRepository implements OrderRepository
 var _ OrderRepository = (*MockOrderRepository)(nil)

@@ -53,3 +53,5 @@ export const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children, allowe
 
   return <>{children}</>;
 };
+
+export default ProtectedRoute;

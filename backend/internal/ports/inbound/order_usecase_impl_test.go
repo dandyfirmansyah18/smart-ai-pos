@@ -52,8 +52,8 @@ func TestCheckout_Success(t *testing.T) {
 	if order.TotalAmount != 10.00 {
 		t.Errorf("expected total amount 10.00, got %.2f", order.TotalAmount)
 	}
-	if order.Status != domain.StatusCompleted {
-		t.Errorf("expected status COMPLETED, got %s", order.Status)
+	if order.Status != domain.StatusPending {
+		t.Errorf("expected status PENDING, got %s", order.Status)
 	}
 	if len(order.Items) != 1 {
 		t.Errorf("expected 1 item, got %d", len(order.Items))

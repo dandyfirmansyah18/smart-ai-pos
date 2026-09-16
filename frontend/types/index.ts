@@ -21,7 +21,7 @@ export interface Order {
   id: string;
   transaction_id: string;
   total_amount: number;
-  status: 'PENDING' | 'COMPLETED' | 'CANCELLED' | 'REFUNDED';
+  status: 'PENDING' | 'PREPARING' | 'READY' | 'SERVED' | 'COMPLETED' | 'CANCELLED' | 'REFUNDED';
   idempotency_key: string;
   items: OrderItem[];
   created_at: string;
@@ -64,6 +64,13 @@ export interface StockUpdateEvent {
   type: string;
   sku: string;
   new_stock: number;
+  updated_at: string;
+}
+
+export interface OrderStatusUpdateEvent {
+  type: string;
+  id: string;
+  status: string;
   updated_at: string;
 }
 

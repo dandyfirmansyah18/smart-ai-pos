@@ -1,7 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { fetchProducts } from '../services/api';
+import { formatIDR } from '../utils/format';
+import AddProductModal from './add-product-modal';
 import {
   TrendingUp,
   DollarSign,
@@ -9,9 +12,11 @@ import {
   AlertTriangle,
   PackageCheck,
   RefreshCw,
+  Plus,
 } from 'lucide-react';
 
 export function SalesChart() {
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const { data: products = [], isLoading } = useQuery({
     queryKey: ['products'],
     queryFn: fetchProducts,
@@ -44,7 +49,7 @@ export function SalesChart() {
           </div>
           <div className="mt-3">
             <span className="text-2xl font-black text-white">
-              ${totalCatalogValue.toFixed(2)}
+              {formatIDR(totalCatalogValue)}
             </span>
             <span className="text-[10px] text-gray-400 block mt-0.5">
               Based on active product inventory
@@ -110,6 +115,14 @@ export function SalesChart() {
               Live stock metrics auto-updated via WebSocket push events
             </p>
           </div>
+
+          <button
+            onClick={() => setIsAddModalOpen(true)}
+            className="flex items-center space-x-1.5 bg-brand-500 hover:bg-brand-600 text-black font-bold px-4 py-2.5 rounded-xl text-xs transition-all shadow-lg shadow-brand-500/20"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Add New Menu</span>
+          </button>
         </div>
 
         <div className="space-y-4">
@@ -148,6 +161,8 @@ export function SalesChart() {
           })}
         </div>
       </div>
+
+      <AddProductModal isOpen={isAddModalOpen} onClose={() => setIsAddModalOpen(false)} />
     </div>
   );
 }
