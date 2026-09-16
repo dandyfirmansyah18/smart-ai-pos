@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Store, ShoppingBag, BarChart3, Receipt, LogIn, LogOut, User as UserIcon } from 'lucide-react';
+import { Store, ShoppingBag, BarChart3, Receipt, LogIn, LogOut, User as UserIcon, ChefHat, Warehouse, TrendingUp } from 'lucide-react';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import './globals.css';
 
@@ -15,8 +15,11 @@ function NavbarContent({ children }: { children: React.ReactNode }) {
 
   const navLinks = [
     { href: '/checkout', label: 'POS Terminal', icon: ShoppingBag },
-    { href: '/dashboard', label: 'Analytics Dashboard', icon: BarChart3 },
-    { href: '/receipts', label: 'AI Receipt Auditor', icon: Receipt },
+    { href: '/portal/kitchen', label: 'Kitchen (KDS)', icon: ChefHat },
+    { href: '/portal/warehouse', label: 'Warehouse', icon: Warehouse },
+    { href: '/portal/finance', label: 'Finance P&L', icon: TrendingUp },
+    { href: '/dashboard', label: 'Analytics', icon: BarChart3 },
+    { href: '/receipts', label: 'Receipt Scanner', icon: Receipt },
   ];
 
   if (isLoginPage) {
