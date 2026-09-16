@@ -10,6 +10,16 @@ export const api = axios.create({
   },
 });
 
+api.interceptors.request.use((config) => {
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('pos_token');
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+  }
+  return config;
+});
+
 export const fetchProducts = async (): Promise<Product[]> => {
   const response = await api.get<Product[]>('/products');
   return response.data;
@@ -44,4 +54,13 @@ export const uploadReceiptScan = async (file: File): Promise<ReceiptAudit> => {
 export const fetchReceiptAudits = async (): Promise<ReceiptAudit[]> => {
   const response = await api.get<ReceiptAudit[]>('/receipts/audits');
   return response.data;
+};
+
+export const fetchKitchenOrders = async (): Promise<Order[]> => {
+  const response = await api.get<Order[]>('/kitchen/orders');
+  return response.data;
+};
+
+export const updateOrderStatus = async (orderId: string, status: string): Promise<void> => {
+  await api.patch(`/kitchen/orders/${orderId}/status`, { status });
 };

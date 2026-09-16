@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/google/uuid"
 	"github.com/pos-backend/internal/domain"
 	"github.com/pos-backend/internal/ports/outbound"
 )
@@ -117,6 +118,22 @@ func (r *ProductPGRepository) ListAll(ctx context.Context) ([]domain.Product, er
 	}
 
 	return products, nil
+}
+
+func (r *ProductPGRepository) CreateProduct(ctx context.Context, product *domain.Product) error {
+	if product.ID == uuid.Nil {
+		product.ID = uuid.New()
+	}
+
+	query := `INSERT INTO products (id, sku, name, description, price, stock_quantity, created_at, updated_at) 
+	          VALUES ($1, $2, $3, $4, $5, $6, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)`
+
+	_, err := r.db.ExecContext(ctx, query, product.ID, product.SKU, product.Name, product.Description, product.Price, product.StockQuantity)
+	if err != nil {
+		return fmt.Errorf("failed to create product: %w", err)
+	}
+
+	return nil
 }
 
 // Compile-time check

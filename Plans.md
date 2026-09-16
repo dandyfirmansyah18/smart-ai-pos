@@ -2,6 +2,11 @@
 
 This execution roadmap breaks down the **Smart AI POS & Merchant Engine** into small, atomic, test-driven phases. Each task is self-contained with exact file paths, interfaces, data models, environment configs, and testing instructions. It is specifically designed as an **autonomous blueprint for AI Agents** to reproduce or build this full-stack system from scratch in any environment.
 
+### 📊 Current Implementation Status
+- **Phase 1 to Phase 6**: Completed (Domain Models, PG Adapters, Redis Locks, Checkout Use Case, REST Handlers, WebSockets Broadcaster Hub).
+- **Phase 7 to Phase 10**: Completed (Gemini Vision OCR Receipt Scanner, Next.js Frontend Foundation, Real-time Stock Sync Hook, POS Checkout Terminal, Sales Dashboard).
+- **Phase 11 & 12**: Completed & Verified (JWT Authentication, RBAC, Kitchen Display System (KDS) Portal UI, Cashier-to-Kitchen real-time order sync, IDR Currency formatting `Rp. xx.xxx`, and Harmoni Cafe & Resto 2025 menu seeders).
+
 ---
 
 ## 🤖 AI Agent Execution Quick Reference
@@ -173,7 +178,7 @@ We implement PostgreSQL infrastructure. Database queries use SQL transactions (`
 
 ---
 
-### Task 2.4: Database Migrations & Seed Data Setup
+### Task 2.4: Versioned Database Migrations & SQL Seed Data Setup
 * **Files to create/modify**:
   * `backend/migrations/000001_create_products_table.up.sql`
   * `backend/migrations/000001_create_products_table.down.sql`
@@ -181,14 +186,24 @@ We implement PostgreSQL infrastructure. Database queries use SQL transactions (`
   * `backend/migrations/000002_create_orders_table.down.sql`
   * `backend/migrations/000003_create_receipt_audits_table.up.sql`
   * `backend/migrations/000003_create_receipt_audits_table.down.sql`
+  * `backend/seeds/000001_initial_products.up.sql`
+  * `backend/seeds/000001_initial_products.down.sql`
+  * `backend/seeds/000002_initial_admin_user.up.sql`
+  * `backend/seeds/000002_initial_admin_user.down.sql`
   * `backend/cmd/migrate/main.go`
   * `backend/cmd/seed/main.go`
 * **Details**:
   * Create raw SQL migration up/down scripts for `products`, `orders`, `order_items`, `receipt_audits`, and custom `order_status` ENUM type.
-  * Implement CLI command `cmd/migrate/main.go` to execute database schema migrations against PostgreSQL.
-  * Implement CLI seeder `cmd/seed/main.go` to populate initial product catalog stock items for local development & testing.
+  * Create raw SQL seed up/down scripts under `backend/seeds/` (`000001_initial_products.up.sql` & `.down.sql`, `000002_initial_admin_user.up.sql` & `.down.sql`) for environment data and admin user injection without hardcoded Go insert logic.
+  * Implement version-tracked migration CLI command `cmd/migrate/main.go`:
+    * Automatically creates and maintains a `schema_migrations` tracking table.
+    * Checks applied migration versions and idempotently skips migration files that have already been executed.
+  * Implement version-tracked seeder CLI command `cmd/seed/main.go`:
+    * Automatically creates and maintains a `seeds_history` tracking table.
+    * Executes versioned SQL seed files from `seeds/` directory (`-up` or `-down`), skipping already applied seed scripts.
 * **Testing Requirements**:
-  * Verify migration scripts execute cleanly up & down without SQL syntax errors.
+  * Verify migration and seed scripts execute cleanly up & down without SQL syntax errors.
+  * Verify running migrations and seeders multiple times is fully idempotent and skips already applied scripts.
 
 
 ---

@@ -6,6 +6,7 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/pos-backend/config"
+	"github.com/pos-backend/internal/adapters/handlers/rest/middleware"
 	"github.com/pos-backend/internal/adapters/handlers/ws"
 	"github.com/pos-backend/internal/ports/inbound"
 	"github.com/pos-backend/internal/ports/outbound"
@@ -15,9 +16,11 @@ type Server struct {
 	router         *gin.Engine
 	cfg            *config.Config
 	productRepo    outbound.ProductRepository
+	orderRepo      outbound.OrderRepository
 	orderUseCase   inbound.OrderUseCase
 	hub            *ws.Hub
 	receiptUseCase inbound.ReceiptUseCase
+	authUseCase    inbound.AuthUseCase
 }
 
 func NewServer(
@@ -25,7 +28,7 @@ func NewServer(
 	productRepo outbound.ProductRepository,
 	orderUseCase inbound.OrderUseCase,
 	hub *ws.Hub,
-	receiptUseCase ...inbound.ReceiptUseCase,
+	optionalDeps ...interface{},
 ) *Server {
 	if cfg.Env == "production" {
 		gin.SetMode(gin.ReleaseMode)
@@ -44,17 +47,29 @@ func NewServer(
 	}))
 
 	var ru inbound.ReceiptUseCase
-	if len(receiptUseCase) > 0 {
-		ru = receiptUseCase[0]
+	var au inbound.AuthUseCase
+	var ordRepo outbound.OrderRepository
+
+	for _, dep := range optionalDeps {
+		switch d := dep.(type) {
+		case inbound.ReceiptUseCase:
+			ru = d
+		case inbound.AuthUseCase:
+			au = d
+		case outbound.OrderRepository:
+			ordRepo = d
+		}
 	}
 
 	s := &Server{
 		router:         r,
 		cfg:            cfg,
 		productRepo:    productRepo,
+		orderRepo:      ordRepo,
 		orderUseCase:   orderUseCase,
 		hub:            hub,
 		receiptUseCase: ru,
+		authUseCase:    au,
 	}
 
 	s.setupRoutes()
@@ -78,6 +93,16 @@ func (s *Server) setupRoutes() {
 		productHandler := NewProductHandler(s.productRepo)
 		api.GET("/products", productHandler.ListProducts)
 		api.GET("/products/:sku", productHandler.GetProductBySKU)
+		if s.authUseCase != nil {
+			productProtected := api.Group("/products")
+			productProtected.Use(middleware.AuthMiddleware(s.cfg.JWTSecret))
+			productProtected.Use(middleware.RequireRole("ADMIN", "WAREHOUSE"))
+			{
+				productProtected.POST("", productHandler.CreateProduct)
+			}
+		} else {
+			api.POST("/products", productHandler.CreateProduct)
+		}
 
 		orderHandler := NewOrderHandler(s.orderUseCase)
 		api.POST("/orders/checkout", orderHandler.Checkout)
@@ -86,6 +111,30 @@ func (s *Server) setupRoutes() {
 			receiptHandler := NewReceiptHandler(s.receiptUseCase)
 			api.POST("/receipts/scan", receiptHandler.ScanReceipt)
 			api.GET("/receipts/audits", receiptHandler.ListAudits)
+		}
+
+		if s.orderRepo != nil {
+			kitchenHandler := NewKitchenHandler(s.orderRepo, s.hub)
+			kitchenGroup := api.Group("/kitchen")
+			if s.authUseCase != nil {
+				kitchenGroup.Use(middleware.AuthMiddleware(s.cfg.JWTSecret))
+				kitchenGroup.Use(middleware.RequireRole("ADMIN", "KITCHEN", "CASHIER"))
+			}
+			{
+				kitchenGroup.GET("/orders", kitchenHandler.ListActiveOrders)
+				kitchenGroup.PATCH("/orders/:id/status", kitchenHandler.UpdateOrderStatus)
+			}
+		}
+
+		if s.authUseCase != nil {
+			authHandler := NewAuthHandler(s.authUseCase)
+			api.POST("/auth/login", authHandler.Login)
+
+			authProtected := api.Group("")
+			authProtected.Use(middleware.AuthMiddleware(s.cfg.JWTSecret))
+			{
+				authProtected.GET("/auth/me", authHandler.Me)
+			}
 		}
 	}
 }

@@ -50,3 +50,25 @@ func (h *ProductHandler) GetProductBySKU(c *gin.Context) {
 
 	c.JSON(http.StatusOK, product)
 }
+
+// CreateProduct POST /api/products
+func (h *ProductHandler) CreateProduct(c *gin.Context) {
+	var req domain.Product
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body format", "details": err.Error()})
+		return
+	}
+
+	if req.SKU == "" || req.Name == "" || req.Price < 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "sku, name and non-negative price are required"})
+		return
+	}
+
+	err := h.repo.CreateProduct(c.Request.Context(), &req)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "failed to create product", "details": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusCreated, req)
+}

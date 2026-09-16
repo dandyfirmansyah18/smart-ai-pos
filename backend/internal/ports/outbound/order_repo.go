@@ -12,4 +12,5 @@ type OrderRepository interface {
 	GetByID(ctx context.Context, id string) (*domain.Order, error)
 	GetByIdempotencyKey(ctx context.Context, key string) (*domain.Order, error)
 	UpdateStatus(ctx context.Context, id string, status string) error
+	ListActiveOrders(ctx context.Context) ([]domain.Order, error)
 }

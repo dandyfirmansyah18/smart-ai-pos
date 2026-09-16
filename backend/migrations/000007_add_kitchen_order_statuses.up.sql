@@ -1,0 +1,4 @@
+-- Add kitchen order status ENUM values (UP)
+ALTER TYPE order_status ADD VALUE IF NOT EXISTS 'PREPARING';
+ALTER TYPE order_status ADD VALUE IF NOT EXISTS 'READY';
+ALTER TYPE order_status ADD VALUE IF NOT EXISTS 'SERVED';

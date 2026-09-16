@@ -42,18 +42,21 @@ func main() {
 	productRepo := pg.NewProductPGRepository(db)
 	orderRepo := pg.NewOrderPGRepository(db)
 	receiptRepo := pg.NewReceiptPGRepository(db)
+	userRepo := pg.NewUserPGRepository(db)
 	visionClient := vision.NewVisionClientImpl(cfg)
 
 	// 6. Initialize Driver Use Cases
 	orderUseCase := inbound.NewOrderUseCaseImpl(db, productRepo, orderRepo, lockService, wsHub)
 	receiptUseCase := inbound.NewReceiptUseCaseImpl(visionClient, receiptRepo)
+	authUseCase := inbound.NewAuthUseCaseImpl(userRepo, cfg.JWTSecret)
 
 	// 7. Initialize REST & WebSocket HTTP Server
-	server := rest.NewServer(cfg, productRepo, orderUseCase, wsHub, receiptUseCase)
+	server := rest.NewServer(cfg, productRepo, orderUseCase, wsHub, receiptUseCase, authUseCase, orderRepo)
 
 	log.Printf("Starting Smart AI POS Engine Server on port :%s (env: %s)...", cfg.Port, cfg.Env)
 	log.Printf("Real-time WebSocket endpoint available at ws://localhost:%s/ws", cfg.Port)
 	log.Printf("AI Receipt Scanning endpoint available at POST http://localhost:%s/api/receipts/scan", cfg.Port)
+	log.Printf("Authentication endpoints available at POST http://localhost:%s/api/auth/login & GET http://localhost:%s/api/auth/me", cfg.Port, cfg.Port)
 
 	if err := server.Run(); err != nil {
 		log.Fatalf("Server shutdown with error: %v", err)

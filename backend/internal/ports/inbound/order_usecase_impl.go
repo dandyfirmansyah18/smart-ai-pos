@@ -133,7 +133,7 @@ func (s *OrderUseCaseImpl) Checkout(ctx context.Context, req dto.CheckoutRequest
 		ID:             orderID,
 		TransactionID:  "TXN-" + uuid.New().String(),
 		TotalAmount:    totalAmount,
-		Status:         domain.StatusCompleted,
+		Status:         domain.StatusPending,
 		IdempotencyKey: req.IdempotencyKey,
 		Items:          orderItems,
 		CreatedAt:      now,
@@ -153,11 +153,12 @@ func (s *OrderUseCaseImpl) Checkout(ctx context.Context, req dto.CheckoutRequest
 		tx = nil
 	}
 
-	// 8. Broadcast real-time stock update events to connected WebSocket clients
+	// 8. Broadcast real-time stock update & order status events to connected WebSocket clients
 	if s.broadcaster != nil {
 		for _, update := range stockUpdates {
 			s.broadcaster.BroadcastStockUpdate(update.SKU, update.NewStock)
 		}
+		s.broadcaster.BroadcastOrderStatusUpdate(orderID.String(), domain.StatusPending)
 	}
 
 	return order, nil

@@ -143,6 +143,37 @@ func (r *OrderPGRepository) UpdateStatus(ctx context.Context, id string, status 
 	return nil
 }
 
+func (r *OrderPGRepository) ListActiveOrders(ctx context.Context) ([]domain.Order, error) {
+	query := `SELECT id, transaction_id, total_amount, status, idempotency_key, created_at, updated_at 
+	           FROM orders WHERE status IN ('PENDING', 'PREPARING', 'READY') ORDER BY created_at DESC`
+
+	rows, err := r.db.QueryContext(ctx, query)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list active orders: %w", err)
+	}
+	defer rows.Close()
+
+	var orders []domain.Order
+	for rows.Next() {
+		var o domain.Order
+		if err := rows.Scan(&o.ID, &o.TransactionID, &o.TotalAmount, &o.Status, &o.IdempotencyKey, &o.CreatedAt, &o.UpdatedAt); err != nil {
+			return nil, fmt.Errorf("failed to scan order row: %w", err)
+		}
+		items, err := r.getOrderItems(ctx, o.ID)
+			if err != nil {
+				return nil, err
+			}
+		o.Items = items
+		orders = append(orders, o)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating order rows: %w", err)
+	}
+
+	return orders, nil
+}
+
 func (r *OrderPGRepository) getOrderItems(ctx context.Context, orderID uuid.UUID) ([]domain.OrderItem, error) {
 	itemsQuery := `SELECT id, order_id, product_id, quantity, unit_price 
 	               FROM order_items WHERE order_id = $1`

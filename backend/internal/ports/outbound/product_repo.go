@@ -12,4 +12,5 @@ type ProductRepository interface {
 	GetBySKUWithLock(ctx context.Context, tx *sql.Tx, sku string) (*domain.Product, error)
 	UpdateStock(ctx context.Context, tx *sql.Tx, sku string, newQty int) error
 	ListAll(ctx context.Context) ([]domain.Product, error)
+	CreateProduct(ctx context.Context, product *domain.Product) error
 }
