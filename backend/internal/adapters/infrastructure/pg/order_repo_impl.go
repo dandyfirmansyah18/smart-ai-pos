@@ -175,8 +175,8 @@ func (r *OrderPGRepository) ListActiveOrders(ctx context.Context) ([]domain.Orde
 }
 
 func (r *OrderPGRepository) getOrderItems(ctx context.Context, orderID uuid.UUID) ([]domain.OrderItem, error) {
-	itemsQuery := `SELECT id, order_id, product_id, quantity, unit_price 
-	               FROM order_items WHERE order_id = $1`
+	itemsQuery := `SELECT oi.id, oi.order_id, oi.product_id, COALESCE(p.sku, ''), COALESCE(p.name, 'Product'), oi.quantity, oi.unit_price 
+	               FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id WHERE oi.order_id = $1`
 
 	rows, err := r.db.QueryContext(ctx, itemsQuery, orderID)
 	if err != nil {
@@ -187,7 +187,7 @@ func (r *OrderPGRepository) getOrderItems(ctx context.Context, orderID uuid.UUID
 	var items []domain.OrderItem
 	for rows.Next() {
 		var item domain.OrderItem
-		if err := rows.Scan(&item.ID, &item.OrderID, &item.ProductID, &item.Quantity, &item.UnitPrice); err != nil {
+		if err := rows.Scan(&item.ID, &item.OrderID, &item.ProductID, &item.SKU, &item.Name, &item.Quantity, &item.UnitPrice); err != nil {
 			return nil, fmt.Errorf("failed to scan order item row: %w", err)
 		}
 		items = append(items, item)

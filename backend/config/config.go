@@ -11,6 +11,7 @@ import (
 type Config struct {
 	Port          string
 	Env           string
+	LogLevel      string
 	DBHost        string
 	DBPort        string
 	DBUser        string
@@ -27,8 +28,9 @@ type Config struct {
 
 type AppConfig struct {
 	Server struct {
-		Port string `mapstructure:"port"`
-		Env  string `mapstructure:"env"`
+		Port     string `mapstructure:"port"`
+		Env      string `mapstructure:"env"`
+		LogLevel string `mapstructure:"log_level"`
 	} `mapstructure:"server"`
 	Database struct {
 		Host     string `mapstructure:"host"`
@@ -58,6 +60,7 @@ func Load() *Config {
 	// Default values
 	v.SetDefault("server.port", "8080")
 	v.SetDefault("server.env", "development")
+	v.SetDefault("server.log_level", "info")
 	v.SetDefault("database.host", "localhost")
 	v.SetDefault("database.port", "5432")
 	v.SetDefault("database.user", "postgres")
@@ -81,6 +84,7 @@ func Load() *Config {
 	// Bind environment variables explicitly for seamless overrides
 	v.BindEnv("server.port", "PORT")
 	v.BindEnv("server.env", "ENV")
+	v.BindEnv("server.log_level", "LOG_LEVEL")
 	v.BindEnv("database.host", "DB_HOST")
 	v.BindEnv("database.port", "DB_PORT")
 	v.BindEnv("database.user", "DB_USER")
@@ -113,9 +117,15 @@ func Load() *Config {
 		jwtSecret = "super-secret-pos-jwt-key-2026"
 	}
 
+	logLevel := appCfg.Server.LogLevel
+	if logLevel == "" {
+		logLevel = "info"
+	}
+
 	return &Config{
 		Port:          appCfg.Server.Port,
 		Env:           appCfg.Server.Env,
+		LogLevel:      logLevel,
 		DBHost:        appCfg.Database.Host,
 		DBPort:        appCfg.Database.Port,
 		DBUser:        appCfg.Database.User,

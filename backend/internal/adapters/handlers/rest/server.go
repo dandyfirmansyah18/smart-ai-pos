@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"database/sql"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -21,6 +22,7 @@ type Server struct {
 	hub            *ws.Hub
 	receiptUseCase inbound.ReceiptUseCase
 	authUseCase    inbound.AuthUseCase
+	db             *sql.DB
 }
 
 func NewServer(
@@ -49,6 +51,7 @@ func NewServer(
 	var ru inbound.ReceiptUseCase
 	var au inbound.AuthUseCase
 	var ordRepo outbound.OrderRepository
+	var database *sql.DB
 
 	for _, dep := range optionalDeps {
 		switch d := dep.(type) {
@@ -58,6 +61,8 @@ func NewServer(
 			au = d
 		case outbound.OrderRepository:
 			ordRepo = d
+		case *sql.DB:
+			database = d
 		}
 	}
 
@@ -70,6 +75,7 @@ func NewServer(
 		hub:            hub,
 		receiptUseCase: ru,
 		authUseCase:    au,
+		db:             database,
 	}
 
 	s.setupRoutes()
@@ -123,6 +129,21 @@ func (s *Server) setupRoutes() {
 			{
 				kitchenGroup.GET("/orders", kitchenHandler.ListActiveOrders)
 				kitchenGroup.PATCH("/orders/:id/status", kitchenHandler.UpdateOrderStatus)
+			}
+		}
+
+		if s.db != nil {
+			accessHandler := NewAccessMenuHandler(s.db)
+			api.GET("/access-menus", accessHandler.GetAccessMenus)
+			api.GET("/access-menus/roles", accessHandler.GetRoleAccessMappings)
+
+			roleProtected := api.Group("/access-menus")
+			if s.authUseCase != nil {
+				roleProtected.Use(middleware.AuthMiddleware(s.cfg.JWTSecret))
+				roleProtected.Use(middleware.RequireRole("ADMIN"))
+			}
+			{
+				roleProtected.PUT("/roles", accessHandler.UpdateRoleAccess)
 			}
 		}
 

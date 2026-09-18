@@ -10,11 +10,14 @@ import (
 	"github.com/pos-backend/internal/adapters/infrastructure/redis"
 	"github.com/pos-backend/internal/adapters/infrastructure/vision"
 	"github.com/pos-backend/internal/ports/inbound"
+	"github.com/pos-backend/pkg/logger"
 )
 
 func main() {
-	// 1. Load Viper Configuration
+	// 1. Load Viper Configuration & Initialize Logger
 	cfg := config.Load()
+	logger.Init(cfg.LogLevel)
+	logger.Log.Info().Str("port", cfg.Port).Str("env", cfg.Env).Msg("Starting Smart AI POS Engine Server...")
 
 	// 2. Initialize WebSocket Broadcaster Hub & start background event loop
 	wsHub := ws.NewHub()
@@ -51,7 +54,7 @@ func main() {
 	authUseCase := inbound.NewAuthUseCaseImpl(userRepo, cfg.JWTSecret)
 
 	// 7. Initialize REST & WebSocket HTTP Server
-	server := rest.NewServer(cfg, productRepo, orderUseCase, wsHub, receiptUseCase, authUseCase, orderRepo)
+	server := rest.NewServer(cfg, productRepo, orderUseCase, wsHub, receiptUseCase, authUseCase, orderRepo, db)
 
 	log.Printf("Starting Smart AI POS Engine Server on port :%s (env: %s)...", cfg.Port, cfg.Env)
 	log.Printf("Real-time WebSocket endpoint available at ws://localhost:%s/ws", cfg.Port)

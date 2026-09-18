@@ -66,10 +66,13 @@ export default function KitchenTicketCard({ order, onUpdateStatus }: KitchenTick
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Order Items</p>
           <div className="divide-y divide-gray-100 max-h-48 overflow-y-auto">
             {order.items && order.items.map((item, idx) => (
-              <div key={item.id || idx} className="py-2 flex justify-between items-center text-sm">
-                <span className="font-medium text-gray-800">
-                  <span className="bg-gray-200 text-gray-800 px-2 py-0.5 rounded font-bold text-xs mr-2">{item.quantity}x</span>
-                  Product ID: {item.product_id.slice(0, 8)}...
+              <div key={item.id || idx} className="py-2.5 flex justify-between items-center text-sm">
+                <span className="font-medium text-gray-800 flex flex-col">
+                  <span className="flex items-center">
+                    <span className="bg-gray-200 text-gray-800 px-2.5 py-0.5 rounded font-bold text-xs mr-2">{item.quantity}x</span>
+                    <strong className="text-gray-900">{item.name || 'Menu Item'}</strong>
+                  </span>
+                  <span className="text-[10px] text-gray-500 font-mono mt-0.5 ml-7">SKU: {item.sku || 'N/A'}</span>
                 </span>
                 <span className="text-gray-600 font-mono">{formatIDR(item.unit_price * item.quantity)}</span>
               </div>
