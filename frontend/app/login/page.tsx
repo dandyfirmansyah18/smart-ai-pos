@@ -104,7 +104,36 @@ export default function LoginPage() {
           </button>
         </form>
 
-        <div className="mt-8 text-center text-xs text-gray-500">
+        {/* Quick Demo Accounts for Testing */}
+        <div className="mt-8 pt-6 border-t border-gray-800">
+          <p className="text-xs font-semibold text-gray-400 mb-3 text-center">Quick Demo Accounts (Click to Fill)</p>
+          <div className="grid grid-cols-2 gap-2">
+            {[
+              { name: 'Admin (All Access)', user: 'admin', pass: 'admin123', badge: 'bg-purple-500/20 text-purple-400' },
+              { name: 'Cashier (POS & P&L)', user: 'cashier', pass: 'cashier123', badge: 'bg-blue-500/20 text-blue-400' },
+              { name: 'Kitchen (KDS Queue)', user: 'kitchen', pass: 'kitchen123', badge: 'bg-amber-500/20 text-amber-400' },
+              { name: 'Warehouse (Stock)', user: 'warehouse', pass: 'warehouse123', badge: 'bg-emerald-500/20 text-emerald-400' },
+            ].map((demo) => (
+              <button
+                key={demo.user}
+                type="button"
+                onClick={() => {
+                  setUsername(demo.user);
+                  setPassword(demo.pass);
+                }}
+                className="p-2.5 rounded-xl bg-gray-800/60 hover:bg-gray-800 border border-gray-700/50 text-left transition-all group hover:border-blue-500/40"
+              >
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-xs font-bold text-white capitalize">{demo.user}</span>
+                  <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono ${demo.badge}`}>Demo</span>
+                </div>
+                <span className="text-[10px] text-gray-400 block truncate">{demo.name}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="mt-6 text-center text-xs text-gray-500">
           Protected by enterprise-grade JWT authentication & RBAC.
         </div>
       </div>
