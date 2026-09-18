@@ -4,14 +4,16 @@ import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Store, ShoppingBag, BarChart3, Receipt, LogIn, LogOut, User as UserIcon, ChefHat, Warehouse, TrendingUp, ShieldCheck, ChevronDown } from 'lucide-react';
+import { Store, ShoppingBag, BarChart3, Receipt, LogIn, LogOut, User as UserIcon, ChefHat, Warehouse, TrendingUp, ShieldCheck, ChevronDown, ClipboardList, Wallet } from 'lucide-react';
 import { AuthProvider, useAuth } from '@/context/auth-context';
+import CashDrawerModal from '../components/cash-drawer-modal';
 import './globals.css';
 
 function NavbarContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isCashDrawerOpen, setIsCashDrawerOpen] = useState(false);
   const isLoginPage = pathname === '/login';
 
   const primaryLinks = [
@@ -22,6 +24,7 @@ function NavbarContent({ children }: { children: React.ReactNode }) {
     { href: '/portal/kitchen', label: 'Kitchen (KDS)', icon: ChefHat },
     { href: '/portal/warehouse', label: 'Warehouse', icon: Warehouse },
     { href: '/portal/finance', label: 'Finance P&L', icon: TrendingUp },
+    { href: '/portal/orders', label: 'Order History', icon: ClipboardList },
     { href: '/dashboard', label: 'Analytics', icon: BarChart3 },
     { href: '/receipts', label: 'Receipt Scanner', icon: Receipt },
   ];
@@ -121,6 +124,14 @@ function NavbarContent({ children }: { children: React.ReactNode }) {
 
             {user ? (
               <div className="flex items-center space-x-3 ml-4 pl-4 border-l border-gray-700">
+                <button
+                  onClick={() => setIsCashDrawerOpen(true)}
+                  className="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all"
+                  title="Buka/Tutup Kasir (Cash Shift)"
+                >
+                  <Wallet className="w-4 h-4" />
+                  <span className="hidden md:inline">Kasir Shift</span>
+                </button>
                 <div className="hidden md:flex flex-col text-right">
                   <span className="text-xs font-bold text-white">{user.full_name}</span>
                   <span className="text-[10px] text-blue-400 uppercase font-semibold">{user.role}</span>
@@ -156,6 +167,8 @@ function NavbarContent({ children }: { children: React.ReactNode }) {
       <footer className="border-t border-gray-800/80 py-4 text-center text-xs text-gray-500 bg-gray-950">
         Smart AI POS & Merchant Engine • Hexagonal Golang Backend + React Next.js Frontend
       </footer>
+
+      <CashDrawerModal isOpen={isCashDrawerOpen} onClose={() => setIsCashDrawerOpen(false)} />
     </div>
   );
 }

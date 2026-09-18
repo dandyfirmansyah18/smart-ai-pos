@@ -145,6 +145,21 @@ func (s *Server) setupRoutes() {
 			{
 				roleProtected.PUT("/roles", accessHandler.UpdateRoleAccess)
 			}
+
+			cashHandler := NewCashShiftHandler(s.db)
+			cashGroup := api.Group("/cash-shifts")
+			if s.authUseCase != nil {
+				cashGroup.Use(middleware.AuthMiddleware(s.cfg.JWTSecret))
+			}
+			{
+				cashGroup.POST("/open", cashHandler.OpenShift)
+				cashGroup.GET("/current", cashHandler.GetCurrentShift)
+				cashGroup.POST("/close", cashHandler.CloseShift)
+			}
+
+			financeHandler := NewFinanceHandler(s.db)
+			api.GET("/orders/history", financeHandler.GetOrderHistory)
+			api.GET("/finance/profit-loss", financeHandler.GetProfitLoss)
 		}
 
 		if s.authUseCase != nil {
