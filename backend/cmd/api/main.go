@@ -46,15 +46,21 @@ func main() {
 	orderRepo := pg.NewOrderPGRepository(db)
 	receiptRepo := pg.NewReceiptPGRepository(db)
 	userRepo := pg.NewUserPGRepository(db)
+	cashShiftRepo := pg.NewCashShiftPGRepository(db)
+	financeRepo := pg.NewFinancePGRepository(db)
+	accessMenuRepo := pg.NewAccessMenuPGRepository(db)
 	visionClient := vision.NewVisionClientImpl(cfg)
 
 	// 6. Initialize Driver Use Cases
 	orderUseCase := inbound.NewOrderUseCaseImpl(db, productRepo, orderRepo, lockService, wsHub)
 	receiptUseCase := inbound.NewReceiptUseCaseImpl(visionClient, receiptRepo)
 	authUseCase := inbound.NewAuthUseCaseImpl(userRepo, cfg.JWTSecret)
+	cashShiftUseCase := inbound.NewCashShiftUseCaseImpl(cashShiftRepo)
+	financeUseCase := inbound.NewFinanceUseCaseImpl(financeRepo)
+	accessMenuUseCase := inbound.NewAccessMenuUseCaseImpl(accessMenuRepo)
 
 	// 7. Initialize REST & WebSocket HTTP Server
-	server := rest.NewServer(cfg, productRepo, orderUseCase, wsHub, receiptUseCase, authUseCase, orderRepo, db)
+	server := rest.NewServer(cfg, productRepo, orderUseCase, wsHub, receiptUseCase, authUseCase, orderRepo, cashShiftUseCase, financeUseCase, accessMenuUseCase)
 
 	log.Printf("Starting Smart AI POS Engine Server on port :%s (env: %s)...", cfg.Port, cfg.Env)
 	log.Printf("Real-time WebSocket endpoint available at ws://localhost:%s/ws", cfg.Port)

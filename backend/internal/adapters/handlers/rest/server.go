@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"database/sql"
 	"time"
 
 	"github.com/gin-contrib/cors"
@@ -14,15 +13,17 @@ import (
 )
 
 type Server struct {
-	router         *gin.Engine
-	cfg            *config.Config
-	productRepo    outbound.ProductRepository
-	orderRepo      outbound.OrderRepository
-	orderUseCase   inbound.OrderUseCase
-	hub            *ws.Hub
-	receiptUseCase inbound.ReceiptUseCase
-	authUseCase    inbound.AuthUseCase
-	db             *sql.DB
+	router            *gin.Engine
+	cfg               *config.Config
+	productRepo       outbound.ProductRepository
+	orderRepo         outbound.OrderRepository
+	orderUseCase      inbound.OrderUseCase
+	hub               *ws.Hub
+	receiptUseCase    inbound.ReceiptUseCase
+	authUseCase       inbound.AuthUseCase
+	cashShiftUseCase  inbound.CashShiftUseCase
+	financeUseCase    inbound.FinanceUseCase
+	accessMenuUseCase inbound.AccessMenuUseCase
 }
 
 func NewServer(
@@ -51,7 +52,9 @@ func NewServer(
 	var ru inbound.ReceiptUseCase
 	var au inbound.AuthUseCase
 	var ordRepo outbound.OrderRepository
-	var database *sql.DB
+	var csUcase inbound.CashShiftUseCase
+	var finUcase inbound.FinanceUseCase
+	var amUcase inbound.AccessMenuUseCase
 
 	for _, dep := range optionalDeps {
 		switch d := dep.(type) {
@@ -61,21 +64,27 @@ func NewServer(
 			au = d
 		case outbound.OrderRepository:
 			ordRepo = d
-		case *sql.DB:
-			database = d
+		case inbound.CashShiftUseCase:
+			csUcase = d
+		case inbound.FinanceUseCase:
+			finUcase = d
+		case inbound.AccessMenuUseCase:
+			amUcase = d
 		}
 	}
 
 	s := &Server{
-		router:         r,
-		cfg:            cfg,
-		productRepo:    productRepo,
-		orderRepo:      ordRepo,
-		orderUseCase:   orderUseCase,
-		hub:            hub,
-		receiptUseCase: ru,
-		authUseCase:    au,
-		db:             database,
+		router:            r,
+		cfg:               cfg,
+		productRepo:       productRepo,
+		orderRepo:         ordRepo,
+		orderUseCase:      orderUseCase,
+		hub:               hub,
+		receiptUseCase:    ru,
+		authUseCase:       au,
+		cashShiftUseCase:  csUcase,
+		financeUseCase:    finUcase,
+		accessMenuUseCase: amUcase,
 	}
 
 	s.setupRoutes()
@@ -132,8 +141,8 @@ func (s *Server) setupRoutes() {
 			}
 		}
 
-		if s.db != nil {
-			accessHandler := NewAccessMenuHandler(s.db)
+		if s.accessMenuUseCase != nil {
+			accessHandler := NewAccessMenuHandler(s.accessMenuUseCase)
 			api.GET("/access-menus", accessHandler.GetAccessMenus)
 			api.GET("/access-menus/roles", accessHandler.GetRoleAccessMappings)
 
@@ -145,8 +154,10 @@ func (s *Server) setupRoutes() {
 			{
 				roleProtected.PUT("/roles", accessHandler.UpdateRoleAccess)
 			}
+		}
 
-			cashHandler := NewCashShiftHandler(s.db)
+		if s.cashShiftUseCase != nil {
+			cashHandler := NewCashShiftHandler(s.cashShiftUseCase)
 			cashGroup := api.Group("/cash-shifts")
 			if s.authUseCase != nil {
 				cashGroup.Use(middleware.AuthMiddleware(s.cfg.JWTSecret))
@@ -156,8 +167,10 @@ func (s *Server) setupRoutes() {
 				cashGroup.GET("/current", cashHandler.GetCurrentShift)
 				cashGroup.POST("/close", cashHandler.CloseShift)
 			}
+		}
 
-			financeHandler := NewFinanceHandler(s.db)
+		if s.financeUseCase != nil {
+			financeHandler := NewFinanceHandler(s.financeUseCase)
 			api.GET("/orders/history", financeHandler.GetOrderHistory)
 			api.GET("/finance/profit-loss", financeHandler.GetProfitLoss)
 		}
