@@ -1,9 +1,11 @@
 package rest
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/gin-gonic/gin"
+	"github.com/google/uuid"
 	"github.com/pos-backend/internal/ports/inbound"
 )
 
@@ -15,14 +17,28 @@ func NewCashShiftHandler(useCase inbound.CashShiftUseCase) *CashShiftHandler {
 	return &CashShiftHandler{useCase: useCase}
 }
 
-// OpenShift POST /api/cash-shifts/open
-func (h *CashShiftHandler) OpenShift(c *gin.Context) {
+func parseUserID(c *gin.Context) (string, bool) {
 	userIDVal, exists := c.Get("user_id")
 	if !exists {
+		return "", false
+	}
+	switch v := userIDVal.(type) {
+	case string:
+		return v, true
+	case uuid.UUID:
+		return v.String(), true
+	default:
+		return fmt.Sprintf("%v", v), true
+	}
+}
+
+// OpenShift POST /api/cash-shifts/open
+func (h *CashShiftHandler) OpenShift(c *gin.Context) {
+	userID, ok := parseUserID(c)
+	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
-	userID := userIDVal.(string)
 
 	var req struct {
 		OpeningCash float64 `json:"opening_cash" binding:"required,gte=0"`
@@ -44,12 +60,11 @@ func (h *CashShiftHandler) OpenShift(c *gin.Context) {
 
 // GetCurrentShift GET /api/cash-shifts/current
 func (h *CashShiftHandler) GetCurrentShift(c *gin.Context) {
-	userIDVal, exists := c.Get("user_id")
-	if !exists {
+	userID, ok := parseUserID(c)
+	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
-	userID := userIDVal.(string)
 
 	shift, err := h.useCase.GetCurrent(c.Request.Context(), userID)
 	if err != nil {
@@ -62,12 +77,11 @@ func (h *CashShiftHandler) GetCurrentShift(c *gin.Context) {
 
 // CloseShift POST /api/cash-shifts/close
 func (h *CashShiftHandler) CloseShift(c *gin.Context) {
-	userIDVal, exists := c.Get("user_id")
-	if !exists {
+	userID, ok := parseUserID(c)
+	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
-	userID := userIDVal.(string)
 
 	var req struct {
 		ClosingCash float64 `json:"closing_cash" binding:"required,gte=0"`
