@@ -9,6 +9,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/gorilla/websocket"
+	"github.com/pos-backend/internal/domain"
 	"github.com/pos-backend/internal/ports/outbound"
 )
 
@@ -35,10 +36,10 @@ type StockUpdateEvent struct {
 }
 
 type OrderStatusUpdateEvent struct {
-	Type      string    `json:"type"`
-	ID        string    `json:"id"`
-	Status    string    `json:"status"`
-	UpdatedAt time.Time `json:"updated_at"`
+	Type      string             `json:"type"`
+	ID        string             `json:"id"`
+	Status    domain.OrderStatus `json:"status"`
+	UpdatedAt time.Time          `json:"updated_at"`
 }
 
 type Client struct {
@@ -114,7 +115,7 @@ func (h *Hub) BroadcastStockUpdate(sku string, newStock int) {
 	h.broadcast <- payload
 }
 
-func (h *Hub) BroadcastOrderStatusUpdate(orderID string, status string) {
+func (h *Hub) BroadcastOrderStatusUpdate(orderID string, status domain.OrderStatus) {
 	event := OrderStatusUpdateEvent{
 		Type:      "order_status_update",
 		ID:        orderID,

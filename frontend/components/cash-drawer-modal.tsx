@@ -1,20 +1,10 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { api } from '../services/api';
+import { getCurrentCashShift, openCashShift, closeCashShift } from '../services/api';
+import { CashShift } from '../types';
 import { formatIDR } from '../utils/format';
 import { Wallet, X, Lock, Unlock, CheckCircle2, AlertCircle, RefreshCw } from 'lucide-react';
-
-interface CashShift {
-  id: string;
-  status: 'OPEN' | 'CLOSED';
-  opening_cash: number;
-  closing_cash: number;
-  expected_cash: number;
-  total_cash_sales: number;
-  notes: string;
-  opened_at: string;
-}
 
 interface CashDrawerModalProps {
   isOpen: boolean;
@@ -35,8 +25,8 @@ export default function CashDrawerModal({ isOpen, onClose }: CashDrawerModalProp
     try {
       setLoading(true);
       setError(null);
-      const res = await api.get<CashShift>('/cash-shifts/current');
-      setCurrentShift(res.data);
+      const shiftData = await getCurrentCashShift();
+      setCurrentShift(shiftData);
     } catch (err: any) {
       if (err.response?.status === 404) {
         setCurrentShift(null);
@@ -61,7 +51,7 @@ export default function CashDrawerModal({ isOpen, onClose }: CashDrawerModalProp
     setActionLoading(true);
     setError(null);
     try {
-      await api.post('/cash-shifts/open', {
+      await openCashShift({
         opening_cash: parseFloat(openingCash) || 0,
         notes,
       });
@@ -80,11 +70,11 @@ export default function CashDrawerModal({ isOpen, onClose }: CashDrawerModalProp
     setActionLoading(true);
     setError(null);
     try {
-      const res = await api.post('/cash-shifts/close', {
+      const res = await closeCashShift({
         closing_cash: parseFloat(closingCash) || 0,
         notes,
       });
-      setSuccess(`Shift closed. Difference: ${formatIDR(res.data.difference)}`);
+      setSuccess(`Shift closed. Difference: ${formatIDR(res.difference)}`);
       setTimeout(() => {
         setSuccess(null);
         setCurrentShift(null);

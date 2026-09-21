@@ -39,7 +39,7 @@ func TestCashShiftUseCase_OpenAndClose(t *testing.T) {
 	if err != nil {
 		t.Fatalf("expected no error closing shift, got %v", err)
 	}
-	if res["expected_cash"] != 650000.0 {
-		t.Errorf("expected expected cash 650000, got %v", res["expected_cash"])
+	if res.ExpectedCash != 650000.0 {
+		t.Errorf("expected expected cash 650000, got %v", res.ExpectedCash)
 	}
 }

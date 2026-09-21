@@ -7,6 +7,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pos-backend/internal/domain"
+	"github.com/pos-backend/internal/dto"
 	"github.com/pos-backend/internal/ports/outbound"
 )
 
@@ -34,6 +35,7 @@ func (u *CashShiftUseCaseImpl) Open(ctx context.Context, userID string, openingC
 	shift := &domain.CashShift{
 		ID:          shiftID,
 		UserID:      parsedUID,
+		Status:      domain.CashShiftStatusOpen,
 		OpeningCash: openingCash,
 		Notes:       notes,
 	}
@@ -49,7 +51,7 @@ func (u *CashShiftUseCaseImpl) GetCurrent(ctx context.Context, userID string) (*
 	return u.repo.GetCurrentShift(ctx, userID)
 }
 
-func (u *CashShiftUseCaseImpl) Close(ctx context.Context, userID string, closingCash float64, notes string) (map[string]interface{}, error) {
+func (u *CashShiftUseCaseImpl) Close(ctx context.Context, userID string, closingCash float64, notes string) (*dto.CloseCashShiftResponse, error) {
 	shift, err := u.repo.GetCurrentShift(ctx, userID)
 	if err != nil {
 		return nil, errors.New("no open cash shift found for user")
@@ -66,13 +68,13 @@ func (u *CashShiftUseCaseImpl) Close(ctx context.Context, userID string, closing
 		return nil, err
 	}
 
-	return map[string]interface{}{
-		"message":       "cash shift closed successfully",
-		"opening_cash":  shift.OpeningCash,
-		"total_sales":   totalSales,
-		"expected_cash": expectedCash,
-		"closing_cash":  closingCash,
-		"difference":    closingCash - expectedCash,
+	return &dto.CloseCashShiftResponse{
+		Message:      "cash shift closed successfully",
+		OpeningCash:  shift.OpeningCash,
+		TotalSales:   totalSales,
+		ExpectedCash: expectedCash,
+		ClosingCash:  closingCash,
+		Difference:   closingCash - expectedCash,
 	}, nil
 }
 

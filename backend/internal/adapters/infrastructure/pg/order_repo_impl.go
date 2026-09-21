@@ -119,7 +119,7 @@ func (r *OrderPGRepository) GetByIdempotencyKey(ctx context.Context, key string)
 	return &o, nil
 }
 
-func (r *OrderPGRepository) UpdateStatus(ctx context.Context, id string, status string) error {
+func (r *OrderPGRepository) UpdateStatus(ctx context.Context, id string, status domain.OrderStatus) error {
 	parsedID, err := uuid.Parse(id)
 	if err != nil {
 		return fmt.Errorf("invalid order ID format: %w", err)

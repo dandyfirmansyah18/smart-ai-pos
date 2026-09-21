@@ -23,7 +23,10 @@ type Config struct {
 	RedisDB       int
 	GeminiAPIKey  string
 	OpenAIAPIKey  string
-	JWTSecret     string
+	JWTSecret            string
+	MidtransServerKey    string
+	MidtransClientKey    string
+	MidtransIsProduction bool
 }
 
 type AppConfig struct {
@@ -52,6 +55,11 @@ type AppConfig struct {
 	JWT struct {
 		Secret string `mapstructure:"secret"`
 	} `mapstructure:"jwt"`
+	Midtrans struct {
+		ServerKey    string `mapstructure:"server_key"`
+		ClientKey    string `mapstructure:"client_key"`
+		IsProduction bool   `mapstructure:"is_production"`
+	} `mapstructure:"midtrans"`
 }
 
 func Load() *Config {
@@ -97,6 +105,9 @@ func Load() *Config {
 	v.BindEnv("vision.gemini_api_key", "GEMINI_API_KEY")
 	v.BindEnv("vision.openai_api_key", "OPENAI_API_KEY")
 	v.BindEnv("jwt.secret", "JWT_SECRET")
+	v.BindEnv("midtrans.server_key", "MIDTRANS_SERVER_KEY")
+	v.BindEnv("midtrans.client_key", "MIDTRANS_CLIENT_KEY")
+	v.BindEnv("midtrans.is_production", "MIDTRANS_IS_PRODUCTION")
 
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
@@ -123,21 +134,24 @@ func Load() *Config {
 	}
 
 	return &Config{
-		Port:          appCfg.Server.Port,
-		Env:           appCfg.Server.Env,
-		LogLevel:      logLevel,
-		DBHost:        appCfg.Database.Host,
-		DBPort:        appCfg.Database.Port,
-		DBUser:        appCfg.Database.User,
-		DBPassword:    appCfg.Database.Password,
-		DBName:        appCfg.Database.Name,
-		DBSslMode:     appCfg.Database.SSLMode,
-		RedisAddr:     appCfg.Redis.Addr,
-		RedisPassword: appCfg.Redis.Password,
-		RedisDB:       appCfg.Redis.DB,
-		GeminiAPIKey:  appCfg.Vision.GeminiAPIKey,
-		OpenAIAPIKey:  appCfg.Vision.OpenAIAPIKey,
-		JWTSecret:     jwtSecret,
+		Port:                 appCfg.Server.Port,
+		Env:                  appCfg.Server.Env,
+		LogLevel:             logLevel,
+		DBHost:               appCfg.Database.Host,
+		DBPort:               appCfg.Database.Port,
+		DBUser:               appCfg.Database.User,
+		DBPassword:           appCfg.Database.Password,
+		DBName:               appCfg.Database.Name,
+		DBSslMode:            appCfg.Database.SSLMode,
+		RedisAddr:            appCfg.Redis.Addr,
+		RedisPassword:        appCfg.Redis.Password,
+		RedisDB:              appCfg.Redis.DB,
+		GeminiAPIKey:         appCfg.Vision.GeminiAPIKey,
+		OpenAIAPIKey:         appCfg.Vision.OpenAIAPIKey,
+		JWTSecret:            jwtSecret,
+		MidtransServerKey:    appCfg.Midtrans.ServerKey,
+		MidtransClientKey:    appCfg.Midtrans.ClientKey,
+		MidtransIsProduction: appCfg.Midtrans.IsProduction,
 	}
 }
 

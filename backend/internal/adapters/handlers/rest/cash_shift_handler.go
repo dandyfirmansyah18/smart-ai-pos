@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/google/uuid"
+	"github.com/pos-backend/internal/dto"
 	"github.com/pos-backend/internal/ports/inbound"
 )
 
@@ -40,10 +41,7 @@ func (h *CashShiftHandler) OpenShift(c *gin.Context) {
 		return
 	}
 
-	var req struct {
-		OpeningCash float64 `json:"opening_cash" binding:"required,gte=0"`
-		Notes       string  `json:"notes"`
-	}
+	var req dto.OpenCashShiftRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body", "details": err.Error()})
 		return
@@ -55,7 +53,10 @@ func (h *CashShiftHandler) OpenShift(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusCreated, gin.H{"message": "cash shift opened successfully", "shift_id": shiftID})
+	c.JSON(http.StatusCreated, dto.OpenCashShiftResponse{
+		Message: "cash shift opened successfully",
+		ShiftID: shiftID,
+	})
 }
 
 // GetCurrentShift GET /api/cash-shifts/current
@@ -83,10 +84,7 @@ func (h *CashShiftHandler) CloseShift(c *gin.Context) {
 		return
 	}
 
-	var req struct {
-		ClosingCash float64 `json:"closing_cash" binding:"required,gte=0"`
-		Notes       string  `json:"notes"`
-	}
+	var req dto.CloseCashShiftRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request body", "details": err.Error()})
 		return

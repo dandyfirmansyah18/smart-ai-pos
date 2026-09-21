@@ -1,6 +1,8 @@
 # Go binaries and executables
 bin/
 main
+api
+__debug_bin*
 *.exe
 *.exe-e
 *.dll

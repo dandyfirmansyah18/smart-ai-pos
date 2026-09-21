@@ -36,6 +36,7 @@ func TestCheckout_Success(t *testing.T) {
 
 	req := dto.CheckoutRequest{
 		IdempotencyKey: "IDEM-TEST-100",
+		PaymentMethod:  domain.PaymentMethodCash,
 		Items: []dto.CheckoutItemRequest{
 			{
 				SKU:      "SKU-COFFEE",
@@ -62,6 +63,43 @@ func TestCheckout_Success(t *testing.T) {
 	// Verify product stock was decremented to 8
 	if mockProductRepo.Products["SKU-COFFEE"].StockQuantity != 8 {
 		t.Errorf("expected stock 8, got %d", mockProductRepo.Products["SKU-COFFEE"].StockQuantity)
+	}
+}
+
+func TestCheckout_MidtransUnpaid(t *testing.T) {
+	mockProductRepo := outbound.NewMockProductRepository()
+	mockOrderRepo := outbound.NewMockOrderRepository()
+	mockLockService := outbound.NewMockLockService()
+
+	prod := &domain.Product{
+		ID:            uuid.New(),
+		SKU:           "SKU-TEA",
+		Name:          "Green Tea",
+		Price:         4.00,
+		StockQuantity: 10,
+	}
+	mockProductRepo.Products[prod.SKU] = prod
+
+	useCase := inbound.NewOrderUseCaseImpl(nil, mockProductRepo, mockOrderRepo, mockLockService)
+	ctx := context.Background()
+
+	req := dto.CheckoutRequest{
+		IdempotencyKey: "IDEM-TEST-MIDTRANS-1",
+		PaymentMethod:  domain.PaymentMethodMidtrans,
+		Items: []dto.CheckoutItemRequest{
+			{
+				SKU:      "SKU-TEA",
+				Quantity: 1,
+			},
+		},
+	}
+
+	order, err := useCase.Checkout(ctx, req)
+	if err != nil {
+		t.Fatalf("expected no error during checkout, got %v", err)
+	}
+	if order.Status != domain.OrderStatusUnpaid {
+		t.Errorf("expected status UNPAID for Midtrans checkout, got %s", order.Status)
 	}
 }
 

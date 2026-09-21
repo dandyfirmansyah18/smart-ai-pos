@@ -1,0 +1,2 @@
+-- PostgreSQL ENUM values cannot be dropped directly without recreating TYPE
+-- Remove UNPAID and EXPIRED order status ENUM values (DOWN)

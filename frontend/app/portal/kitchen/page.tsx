@@ -4,13 +4,13 @@ import React, { useState, useEffect, useCallback } from 'react';
 import ProtectedRoute from '../../../components/protected-route';
 import KitchenTicketCard from '../../../components/kitchen-ticket-card';
 import { fetchKitchenOrders, updateOrderStatus } from '../../../services/api';
-import { Order, OrderStatusUpdateEvent } from '../../../types';
+import { Order, OrderStatus, UserRole } from '../../../types';
 import { ChefHat, RefreshCw, Bell, Layers } from 'lucide-react';
 
 export default function KitchenPortalPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
-  const [filter, setFilter] = useState<'ALL' | 'PENDING' | 'PREPARING' | 'READY'>('ALL');
+  const [filter, setFilter] = useState<'ALL' | OrderStatus>('ALL');
   const [audioEnabled, setAudioEnabled] = useState<boolean>(false);
 
   const playChime = useCallback(() => {
@@ -72,7 +72,7 @@ export default function KitchenPortalPage() {
     };
   }, [loadOrders, playChime]);
 
-  const handleUpdateStatus = async (orderId: string, newStatus: string) => {
+  const handleUpdateStatus = async (orderId: string, newStatus: OrderStatus) => {
     try {
       await updateOrderStatus(orderId, newStatus);
       loadOrders();
@@ -86,8 +86,15 @@ export default function KitchenPortalPage() {
     return o.status === filter;
   });
 
+  const tabs = [
+    { label: 'ALL', value: 'ALL' },
+    { label: 'PENDING', value: OrderStatus.PENDING },
+    { label: 'PREPARING', value: OrderStatus.PREPARING },
+    { label: 'READY', value: OrderStatus.READY },
+  ] as const;
+
   return (
-    <ProtectedRoute allowedRoles={['ADMIN', 'KITCHEN', 'CASHIER']}>
+    <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.KITCHEN, UserRole.CASHIER]}>
       <div className="min-h-screen bg-gray-900 text-white p-6">
         <header className="flex justify-between items-center mb-8 border-b border-gray-800 pb-4">
           <div className="flex items-center gap-3">
@@ -122,17 +129,17 @@ export default function KitchenPortalPage() {
         </header>
 
         <div className="flex gap-2 mb-6">
-          {(['ALL', 'PENDING', 'PREPARING', 'READY'] as const).map((tab) => (
+          {tabs.map((tab) => (
             <button
-              key={tab}
-              onClick={() => setFilter(tab)}
+              key={tab.label}
+              onClick={() => setFilter(tab.value)}
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition-colors ${
-                filter === tab
+                filter === tab.value
                   ? 'bg-amber-500 text-gray-950'
                   : 'bg-gray-800 text-gray-300 hover:bg-gray-700'
               }`}
             >
-              {tab} ({orders.filter(o => tab === 'ALL' || o.status === tab).length})
+              {tab.label} ({orders.filter(o => tab.value === 'ALL' || o.status === tab.value).length})
             </button>
           ))}
         </div>

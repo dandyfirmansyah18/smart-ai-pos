@@ -24,6 +24,7 @@ type Server struct {
 	cashShiftUseCase  inbound.CashShiftUseCase
 	financeUseCase    inbound.FinanceUseCase
 	accessMenuUseCase inbound.AccessMenuUseCase
+	paymentUseCase    inbound.PaymentUseCase
 }
 
 func NewServer(
@@ -55,6 +56,7 @@ func NewServer(
 	var csUcase inbound.CashShiftUseCase
 	var finUcase inbound.FinanceUseCase
 	var amUcase inbound.AccessMenuUseCase
+	var payUcase inbound.PaymentUseCase
 
 	for _, dep := range optionalDeps {
 		switch d := dep.(type) {
@@ -70,6 +72,8 @@ func NewServer(
 			finUcase = d
 		case inbound.AccessMenuUseCase:
 			amUcase = d
+		case inbound.PaymentUseCase:
+			payUcase = d
 		}
 	}
 
@@ -85,6 +89,7 @@ func NewServer(
 		cashShiftUseCase:  csUcase,
 		financeUseCase:    finUcase,
 		accessMenuUseCase: amUcase,
+		paymentUseCase:    payUcase,
 	}
 
 	s.setupRoutes()
@@ -173,6 +178,13 @@ func (s *Server) setupRoutes() {
 			financeHandler := NewFinanceHandler(s.financeUseCase)
 			api.GET("/orders/history", financeHandler.GetOrderHistory)
 			api.GET("/finance/profit-loss", financeHandler.GetProfitLoss)
+		}
+
+		if s.paymentUseCase != nil {
+			paymentHandler := NewPaymentHandler(s.paymentUseCase)
+			api.POST("/payments/charge", paymentHandler.CreatePaymentCharge)
+			api.GET("/payments/order/:order_id", paymentHandler.GetPaymentByOrderID)
+			api.POST("/payments/webhook", paymentHandler.HandleWebhook)
 		}
 
 		if s.authUseCase != nil {

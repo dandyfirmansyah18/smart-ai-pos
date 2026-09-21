@@ -7,12 +7,24 @@ import (
 	"github.com/google/uuid"
 )
 
-// Order status constants
+type OrderStatus string
+
 const (
-	StatusPending   = "PENDING"
-	StatusCompleted = "COMPLETED"
-	StatusCancelled = "CANCELLED"
-	StatusRefunded  = "REFUNDED"
+	OrderStatusUnpaid    OrderStatus = "UNPAID"
+	OrderStatusPending   OrderStatus = "PENDING"
+	OrderStatusPreparing OrderStatus = "PREPARING"
+	OrderStatusReady     OrderStatus = "READY"
+	OrderStatusServed    OrderStatus = "SERVED"
+	OrderStatusCompleted OrderStatus = "COMPLETED"
+	OrderStatusCancelled OrderStatus = "CANCELLED"
+	OrderStatusExpired   OrderStatus = "EXPIRED"
+	OrderStatusRefunded  OrderStatus = "REFUNDED"
+
+	// Legacy aliases for backward compatibility
+	StatusPending   = OrderStatusPending
+	StatusCompleted = OrderStatusCompleted
+	StatusCancelled = OrderStatusCancelled
+	StatusRefunded  = OrderStatusRefunded
 )
 
 var (
@@ -25,7 +37,7 @@ type Order struct {
 	ID             uuid.UUID   `json:"id"`
 	TransactionID  string      `json:"transaction_id"`
 	TotalAmount    float64     `json:"total_amount"`
-	Status         string      `json:"status"` // PENDING, COMPLETED, CANCELLED, REFUNDED
+	Status         OrderStatus `json:"status"` // PENDING, PREPARING, READY, SERVED, COMPLETED, CANCELLED, REFUNDED
 	IdempotencyKey string      `json:"idempotency_key"`
 	Items          []OrderItem `json:"items"`
 	CreatedAt      time.Time   `json:"created_at"`
