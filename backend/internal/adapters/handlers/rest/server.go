@@ -6,7 +6,6 @@ import (
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/pos-backend/config"
-	"github.com/pos-backend/internal/adapters/handlers/rest/middleware"
 	"github.com/pos-backend/internal/adapters/handlers/ws"
 	"github.com/pos-backend/internal/ports/inbound"
 	"github.com/pos-backend/internal/ports/outbound"
@@ -113,101 +112,20 @@ func (s *Server) setupRoutes() {
 		s.router.GET("/ws", s.hub.ServeWS)
 	}
 
+	s.registerSwaggerRoutes()
+
 	api := s.router.Group("/api")
 	{
-		productHandler := NewProductHandler(s.productRepo)
-		api.GET("/products", productHandler.ListProducts)
-		api.GET("/products/:sku", productHandler.GetProductBySKU)
-		if s.authUseCase != nil {
-			productProtected := api.Group("/products")
-			productProtected.Use(middleware.AuthMiddleware(s.cfg.JWTSecret))
-			productProtected.Use(middleware.RequireRole("ADMIN", "WAREHOUSE"))
-			{
-				productProtected.POST("", productHandler.CreateProduct)
-			}
-		} else {
-			api.POST("/products", productHandler.CreateProduct)
-		}
-
-		orderHandler := NewOrderHandler(s.orderUseCase)
-		api.POST("/orders/checkout", orderHandler.Checkout)
-
-		if s.receiptUseCase != nil {
-			receiptHandler := NewReceiptHandler(s.receiptUseCase)
-			api.POST("/receipts/scan", receiptHandler.ScanReceipt)
-			api.GET("/receipts/audits", receiptHandler.ListAudits)
-		}
-
-		if s.orderRepo != nil {
-			kitchenHandler := NewKitchenHandler(s.orderRepo, s.hub)
-			kitchenGroup := api.Group("/kitchen")
-			if s.authUseCase != nil {
-				kitchenGroup.Use(middleware.AuthMiddleware(s.cfg.JWTSecret))
-				kitchenGroup.Use(middleware.RequireRole("ADMIN", "KITCHEN", "CASHIER"))
-			}
-			{
-				kitchenGroup.GET("/orders", kitchenHandler.ListActiveOrders)
-				kitchenGroup.PATCH("/orders/:id/status", kitchenHandler.UpdateOrderStatus)
-			}
-		}
-
-		if s.accessMenuUseCase != nil {
-			accessHandler := NewAccessMenuHandler(s.accessMenuUseCase)
-			api.GET("/access-menus", accessHandler.GetAccessMenus)
-			api.GET("/access-menus/roles", accessHandler.GetRoleAccessMappings)
-
-			roleProtected := api.Group("/access-menus")
-			if s.authUseCase != nil {
-				roleProtected.Use(middleware.AuthMiddleware(s.cfg.JWTSecret))
-				roleProtected.Use(middleware.RequireRole("ADMIN"))
-			}
-			{
-				roleProtected.PUT("/roles", accessHandler.UpdateRoleAccess)
-			}
-		}
-
-		if s.cashShiftUseCase != nil {
-			cashHandler := NewCashShiftHandler(s.cashShiftUseCase)
-			cashGroup := api.Group("/cash-shifts")
-			if s.authUseCase != nil {
-				cashGroup.Use(middleware.AuthMiddleware(s.cfg.JWTSecret))
-			}
-			{
-				cashGroup.POST("/open", cashHandler.OpenShift)
-				cashGroup.GET("/current", cashHandler.GetCurrentShift)
-				cashGroup.POST("/close", cashHandler.CloseShift)
-			}
-		}
-
-		if s.financeUseCase != nil {
-			financeHandler := NewFinanceHandler(s.financeUseCase)
-			api.GET("/orders/history", financeHandler.GetOrderHistory)
-			api.GET("/finance/profit-loss", financeHandler.GetProfitLoss)
-		}
-
-		if s.paymentUseCase != nil {
-			paymentHandler := NewPaymentHandler(s.paymentUseCase)
-			api.POST("/payments/charge", paymentHandler.CreatePaymentCharge)
-			api.GET("/payments/order/:order_id", paymentHandler.GetPaymentByOrderID)
-			api.POST("/payments/webhook", paymentHandler.HandleWebhook)
-		}
-
-		if s.syncUseCase != nil {
-			syncHandler := NewSyncHandler(s.syncUseCase)
-			api.GET("/sync/status", syncHandler.GetSyncStatus)
-			api.POST("/sync/trigger", syncHandler.TriggerSync)
-		}
-
-		if s.authUseCase != nil {
-			authHandler := NewAuthHandler(s.authUseCase)
-			api.POST("/auth/login", authHandler.Login)
-
-			authProtected := api.Group("")
-			authProtected.Use(middleware.AuthMiddleware(s.cfg.JWTSecret))
-			{
-				authProtected.GET("/auth/me", authHandler.Me)
-			}
-		}
+		s.registerProductRoutes(api)
+		s.registerOrderRoutes(api)
+		s.registerReceiptRoutes(api)
+		s.registerKitchenRoutes(api)
+		s.registerAccessMenuRoutes(api)
+		s.registerCashShiftRoutes(api)
+		s.registerFinanceRoutes(api)
+		s.registerPaymentRoutes(api)
+		s.registerSyncRoutes(api)
+		s.registerAuthRoutes(api)
 	}
 }
 
