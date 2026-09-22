@@ -1,0 +1,3 @@
+-- Add UNPAID and EXPIRED order status ENUM values (UP)
+ALTER TYPE order_status ADD VALUE IF NOT EXISTS 'UNPAID';
+ALTER TYPE order_status ADD VALUE IF NOT EXISTS 'EXPIRED';

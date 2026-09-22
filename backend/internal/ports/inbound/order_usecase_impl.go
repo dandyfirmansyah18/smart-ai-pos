@@ -129,11 +129,16 @@ func (s *OrderUseCaseImpl) Checkout(ctx context.Context, req dto.CheckoutRequest
 		orderItems[i].OrderID = orderID
 	}
 
+	initialStatus := domain.OrderStatusUnpaid
+	if req.PaymentMethod == domain.PaymentMethodCash {
+		initialStatus = domain.OrderStatusPending
+	}
+
 	order := &domain.Order{
 		ID:             orderID,
 		TransactionID:  "TXN-" + uuid.New().String(),
 		TotalAmount:    totalAmount,
-		Status:         domain.StatusPending,
+		Status:         initialStatus,
 		IdempotencyKey: req.IdempotencyKey,
 		Items:          orderItems,
 		CreatedAt:      now,
@@ -158,7 +163,9 @@ func (s *OrderUseCaseImpl) Checkout(ctx context.Context, req dto.CheckoutRequest
 		for _, update := range stockUpdates {
 			s.broadcaster.BroadcastStockUpdate(update.SKU, update.NewStock)
 		}
-		s.broadcaster.BroadcastOrderStatusUpdate(orderID.String(), domain.StatusPending)
+		if initialStatus != domain.OrderStatusUnpaid {
+			s.broadcaster.BroadcastOrderStatusUpdate(orderID.String(), initialStatus)
+		}
 	}
 
 	return order, nil

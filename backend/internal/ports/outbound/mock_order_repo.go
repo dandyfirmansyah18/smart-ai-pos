@@ -46,7 +46,7 @@ func (m *MockOrderRepository) GetByIdempotencyKey(ctx context.Context, key strin
 	return nil, domain.ErrOrderNotFound
 }
 
-func (m *MockOrderRepository) UpdateStatus(ctx context.Context, id string, status string) error {
+func (m *MockOrderRepository) UpdateStatus(ctx context.Context, id string, status domain.OrderStatus) error {
 	o, ok := m.Orders[id]
 	if !ok {
 		return domain.ErrOrderNotFound
@@ -58,7 +58,7 @@ func (m *MockOrderRepository) UpdateStatus(ctx context.Context, id string, statu
 func (m *MockOrderRepository) ListActiveOrders(ctx context.Context) ([]domain.Order, error) {
 	var active []domain.Order
 	for _, o := range m.Orders {
-		if o.Status == "PENDING" || o.Status == "PREPARING" || o.Status == "READY" {
+		if o.Status == domain.OrderStatusPending || o.Status == domain.OrderStatusPreparing || o.Status == domain.OrderStatusReady {
 			active = append(active, *o)
 		}
 	}

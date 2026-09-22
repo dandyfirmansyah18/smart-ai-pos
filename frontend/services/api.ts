@@ -1,5 +1,18 @@
 import axios from 'axios';
-import { Product, Order, CheckoutRequest, ReceiptAudit } from '../types';
+import {
+  Product,
+  Order,
+  CheckoutRequest,
+  ReceiptAudit,
+  OrderPayment,
+  CreatePaymentChargeRequest,
+  CashShift,
+  OpenCashShiftRequest,
+  OpenCashShiftResponse,
+  CloseCashShiftRequest,
+  CloseCashShiftResponse,
+  OrderStatus,
+} from '../types';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080/api';
 
@@ -39,6 +52,40 @@ export const checkoutOrder = async (payload: CheckoutRequest): Promise<Order> =>
   return response.data;
 };
 
+export const createPaymentCharge = async (payload: CreatePaymentChargeRequest): Promise<OrderPayment> => {
+  const response = await api.post<OrderPayment>('/payments/charge', payload);
+  return response.data;
+};
+
+export const getPaymentByOrderID = async (orderId: string): Promise<OrderPayment> => {
+  const response = await api.get<OrderPayment>(`/payments/order/${orderId}`);
+  return response.data;
+};
+
+export const notifyPaymentStatus = async (payload: {
+  order_id: string;
+  transaction_status: string;
+  status_code?: string;
+  gross_amount?: string;
+}): Promise<void> => {
+  await api.post('/payments/webhook', payload);
+};
+
+export const getCurrentCashShift = async (): Promise<CashShift> => {
+  const response = await api.get<CashShift>('/cash-shifts/current');
+  return response.data;
+};
+
+export const openCashShift = async (payload: OpenCashShiftRequest): Promise<OpenCashShiftResponse> => {
+  const response = await api.post<OpenCashShiftResponse>('/cash-shifts/open', payload);
+  return response.data;
+};
+
+export const closeCashShift = async (payload: CloseCashShiftRequest): Promise<CloseCashShiftResponse> => {
+  const response = await api.post<CloseCashShiftResponse>('/cash-shifts/close', payload);
+  return response.data;
+};
+
 export const uploadReceiptScan = async (file: File): Promise<ReceiptAudit> => {
   const formData = new FormData();
   formData.append('image', file);
@@ -61,6 +108,11 @@ export const fetchKitchenOrders = async (): Promise<Order[]> => {
   return response.data;
 };
 
-export const updateOrderStatus = async (orderId: string, status: string): Promise<void> => {
+export const updateOrderStatus = async (orderId: string, status: OrderStatus): Promise<void> => {
   await api.patch(`/kitchen/orders/${orderId}/status`, { status });
+};
+
+export const fetchOrderHistory = async (): Promise<Order[]> => {
+  const response = await api.get<Order[]>('/orders/history');
+  return response.data;
 };

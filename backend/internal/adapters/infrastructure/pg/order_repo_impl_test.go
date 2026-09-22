@@ -85,10 +85,10 @@ func TestOrderPGRepository_GetByID(t *testing.T) {
 		WithArgs(orderID).
 		WillReturnRows(orderRows)
 
-	itemRows := sqlmock.NewRows([]string{"id", "order_id", "product_id", "quantity", "unit_price"}).
-		AddRow(itemID, orderID, prodID, 3, 50.00)
+	itemRows := sqlmock.NewRows([]string{"id", "order_id", "product_id", "sku", "name", "quantity", "unit_price"}).
+		AddRow(itemID, orderID, prodID, "SKU-TEST", "Test Item", 3, 50.00)
 
-	mock.ExpectQuery(regexp.QuoteMeta("SELECT id, order_id, product_id, quantity, unit_price FROM order_items WHERE order_id = $1")).
+	mock.ExpectQuery(regexp.QuoteMeta("SELECT oi.id, oi.order_id, oi.product_id, COALESCE(p.sku, ''), COALESCE(p.name, 'Product'), oi.quantity, oi.unit_price FROM order_items oi LEFT JOIN products p ON oi.product_id = p.id WHERE oi.order_id = $1")).
 		WithArgs(orderID).
 		WillReturnRows(itemRows)
 

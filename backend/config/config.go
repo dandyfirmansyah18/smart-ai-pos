@@ -11,6 +11,7 @@ import (
 type Config struct {
 	Port          string
 	Env           string
+	LogLevel      string
 	DBHost        string
 	DBPort        string
 	DBUser        string
@@ -22,13 +23,17 @@ type Config struct {
 	RedisDB       int
 	GeminiAPIKey  string
 	OpenAIAPIKey  string
-	JWTSecret     string
+	JWTSecret            string
+	MidtransServerKey    string
+	MidtransClientKey    string
+	MidtransIsProduction bool
 }
 
 type AppConfig struct {
 	Server struct {
-		Port string `mapstructure:"port"`
-		Env  string `mapstructure:"env"`
+		Port     string `mapstructure:"port"`
+		Env      string `mapstructure:"env"`
+		LogLevel string `mapstructure:"log_level"`
 	} `mapstructure:"server"`
 	Database struct {
 		Host     string `mapstructure:"host"`
@@ -50,6 +55,11 @@ type AppConfig struct {
 	JWT struct {
 		Secret string `mapstructure:"secret"`
 	} `mapstructure:"jwt"`
+	Midtrans struct {
+		ServerKey    string `mapstructure:"server_key"`
+		ClientKey    string `mapstructure:"client_key"`
+		IsProduction bool   `mapstructure:"is_production"`
+	} `mapstructure:"midtrans"`
 }
 
 func Load() *Config {
@@ -58,6 +68,7 @@ func Load() *Config {
 	// Default values
 	v.SetDefault("server.port", "8080")
 	v.SetDefault("server.env", "development")
+	v.SetDefault("server.log_level", "info")
 	v.SetDefault("database.host", "localhost")
 	v.SetDefault("database.port", "5432")
 	v.SetDefault("database.user", "postgres")
@@ -81,6 +92,7 @@ func Load() *Config {
 	// Bind environment variables explicitly for seamless overrides
 	v.BindEnv("server.port", "PORT")
 	v.BindEnv("server.env", "ENV")
+	v.BindEnv("server.log_level", "LOG_LEVEL")
 	v.BindEnv("database.host", "DB_HOST")
 	v.BindEnv("database.port", "DB_PORT")
 	v.BindEnv("database.user", "DB_USER")
@@ -93,6 +105,9 @@ func Load() *Config {
 	v.BindEnv("vision.gemini_api_key", "GEMINI_API_KEY")
 	v.BindEnv("vision.openai_api_key", "OPENAI_API_KEY")
 	v.BindEnv("jwt.secret", "JWT_SECRET")
+	v.BindEnv("midtrans.server_key", "MIDTRANS_SERVER_KEY")
+	v.BindEnv("midtrans.client_key", "MIDTRANS_CLIENT_KEY")
+	v.BindEnv("midtrans.is_production", "MIDTRANS_IS_PRODUCTION")
 
 	v.SetEnvKeyReplacer(strings.NewReplacer(".", "_"))
 	v.AutomaticEnv()
@@ -113,21 +128,30 @@ func Load() *Config {
 		jwtSecret = "super-secret-pos-jwt-key-2026"
 	}
 
+	logLevel := appCfg.Server.LogLevel
+	if logLevel == "" {
+		logLevel = "info"
+	}
+
 	return &Config{
-		Port:          appCfg.Server.Port,
-		Env:           appCfg.Server.Env,
-		DBHost:        appCfg.Database.Host,
-		DBPort:        appCfg.Database.Port,
-		DBUser:        appCfg.Database.User,
-		DBPassword:    appCfg.Database.Password,
-		DBName:        appCfg.Database.Name,
-		DBSslMode:     appCfg.Database.SSLMode,
-		RedisAddr:     appCfg.Redis.Addr,
-		RedisPassword: appCfg.Redis.Password,
-		RedisDB:       appCfg.Redis.DB,
-		GeminiAPIKey:  appCfg.Vision.GeminiAPIKey,
-		OpenAIAPIKey:  appCfg.Vision.OpenAIAPIKey,
-		JWTSecret:     jwtSecret,
+		Port:                 appCfg.Server.Port,
+		Env:                  appCfg.Server.Env,
+		LogLevel:             logLevel,
+		DBHost:               appCfg.Database.Host,
+		DBPort:               appCfg.Database.Port,
+		DBUser:               appCfg.Database.User,
+		DBPassword:           appCfg.Database.Password,
+		DBName:               appCfg.Database.Name,
+		DBSslMode:            appCfg.Database.SSLMode,
+		RedisAddr:            appCfg.Redis.Addr,
+		RedisPassword:        appCfg.Redis.Password,
+		RedisDB:              appCfg.Redis.DB,
+		GeminiAPIKey:         appCfg.Vision.GeminiAPIKey,
+		OpenAIAPIKey:         appCfg.Vision.OpenAIAPIKey,
+		JWTSecret:            jwtSecret,
+		MidtransServerKey:    appCfg.Midtrans.ServerKey,
+		MidtransClientKey:    appCfg.Midtrans.ClientKey,
+		MidtransIsProduction: appCfg.Midtrans.IsProduction,
 	}
 }
 

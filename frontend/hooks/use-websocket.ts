@@ -27,7 +27,7 @@ export function useWebSocketSync() {
 
         ws.onmessage = (event) => {
           try {
-            const data: StockUpdateEvent = JSON.parse(event.data);
+            const data = JSON.parse(event.data);
             if (data.type === 'stock_update') {
               setLastEvent(data);
 
@@ -38,6 +38,9 @@ export function useWebSocketSync() {
                   p.sku === data.sku ? { ...p, stock_quantity: data.new_stock } : p
                 );
               });
+            } else if (data.type === 'order_status_update' || data.type === 'ORDER_STATUS_UPDATE') {
+              queryClient.invalidateQueries({ queryKey: ['orderHistory'] });
+              queryClient.invalidateQueries({ queryKey: ['kitchenOrders'] });
             }
           } catch (err) {
             console.error('[WebSocket] Error parsing message payload:', err);

@@ -3,16 +3,9 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 
-export type UserRole = 'ADMIN' | 'CASHIER' | 'KITCHEN' | 'WAREHOUSE';
+import { UserRole, User } from '../types';
 
-export interface User {
-  id: string;
-  username: string;
-  role: UserRole;
-  full_name: string;
-  created_at: string;
-  updated_at: string;
-}
+export { UserRole, type User };
 
 interface AuthContextType {
   user: User | null;
@@ -53,11 +46,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem('pos_user', JSON.stringify(newUser));
 
     // Role-based automatic navigation
-    if (newUser.role === 'KITCHEN') {
+    if (newUser.role === UserRole.KITCHEN) {
       router.push('/portal/kitchen');
-    } else if (newUser.role === 'WAREHOUSE') {
+    } else if (newUser.role === UserRole.WAREHOUSE) {
       router.push('/portal/warehouse');
-    } else if (newUser.role === 'ADMIN') {
+    } else if (newUser.role === UserRole.ADMIN) {
       router.push('/portal/finance');
     } else {
       router.push('/dashboard');

@@ -2,8 +2,8 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchProducts, checkoutOrder } from '../services/api';
-import { Product, CartItem, Order } from '../types';
+import { fetchProducts, checkoutOrder, createPaymentCharge, notifyPaymentStatus } from '../services/api';
+import { Product, CartItem, Order, PaymentMethod, OrderPayment, OrderStatus } from '../types';
 import { useWebSocketSync } from '../hooks/use-websocket';
 import { formatIDR } from '../utils/format';
 import {
@@ -20,6 +20,30 @@ import {
   Package,
 } from 'lucide-react';
 
+const loadSnapScript = (): Promise<void> => {
+  return new Promise((resolve) => {
+    if (typeof window !== 'undefined' && window.snap) {
+      resolve();
+      return;
+    }
+    const snapUrl = process.env.NEXT_PUBLIC_MIDTRANS_SNAP_URL || 'https://app.sandbox.midtrans.com/snap/snap.js';
+    const clientKey = process.env.NEXT_PUBLIC_MIDTRANS_CLIENT_KEY || 'SB-Mid-client-your_client_key';
+
+    const existingScript = document.getElementById('midtrans-snap-script');
+    if (existingScript) {
+      existingScript.onload = () => resolve();
+      return;
+    }
+
+    const script = document.createElement('script');
+    script.id = 'midtrans-snap-script';
+    script.src = snapUrl;
+    script.setAttribute('data-client-key', clientKey);
+    script.onload = () => resolve();
+    document.body.appendChild(script);
+  });
+};
+
 export function CheckoutTerminal() {
   const queryClient = useQueryClient();
   const { isConnected, lastEvent } = useWebSocketSync();
@@ -29,6 +53,8 @@ export function CheckoutTerminal() {
   const [selectedCategory, setSelectedCategory] = useState<string>('ALL');
   const [lastCompletedOrder, setLastCompletedOrder] = useState<Order | null>(null);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>(PaymentMethod.CASH);
+  const [paymentChargeResult, setPaymentChargeResult] = useState<OrderPayment | null>(null);
 
   // Fetch products using TanStack Query
   const {
@@ -41,14 +67,84 @@ export function CheckoutTerminal() {
     queryFn: fetchProducts,
   });
 
+  const openSnapModal = async (token: string, orderId?: string) => {
+    await loadSnapScript();
+    if (window.snap) {
+      window.snap.pay(token, {
+        onSuccess: async (result) => {
+          console.log('Snap Payment Success:', result);
+          const targetOrderId = result?.order_id || orderId || '';
+          try {
+            await notifyPaymentStatus({
+              order_id: targetOrderId,
+              transaction_status: result?.transaction_status || 'settlement',
+              status_code: result?.status_code,
+              gross_amount: result?.gross_amount,
+            });
+          } catch (err) {
+            console.error('Failed to notify payment success to backend:', err);
+          }
+          setLastCompletedOrder((prev) =>
+            prev ? { ...prev, status: OrderStatus.PENDING } : null
+          );
+          queryClient.setQueryData(['orderHistory'], (oldOrders: Order[] | undefined) => {
+            if (!oldOrders) return [];
+            return oldOrders.map((o) =>
+              o.id === targetOrderId ? { ...o, status: OrderStatus.PENDING } : o
+            );
+          });
+          queryClient.invalidateQueries({ queryKey: ['products'] });
+          queryClient.invalidateQueries({ queryKey: ['orderHistory'] });
+          queryClient.invalidateQueries({ queryKey: ['kitchenOrders'] });
+        },
+        onPending: async (result) => {
+          console.log('Snap Payment Pending:', result);
+          try {
+            await notifyPaymentStatus({
+              order_id: result?.order_id || orderId || '',
+              transaction_status: result?.transaction_status || 'pending',
+              status_code: result?.status_code,
+              gross_amount: result?.gross_amount,
+            });
+          } catch (err) {
+            console.error('Failed to notify payment pending to backend:', err);
+          }
+          queryClient.invalidateQueries({ queryKey: ['orderHistory'] });
+        },
+        onError: (result) => {
+          console.error('Snap Payment Error:', result);
+        },
+        onClose: () => {
+          console.log('Snap Payment popup closed by user');
+        },
+      });
+    }
+  };
+
   // Checkout Mutation
   const checkoutMutation = useMutation({
     mutationFn: checkoutOrder,
-    onSuccess: (completedOrder) => {
+    onSuccess: async (completedOrder) => {
       setLastCompletedOrder(completedOrder);
       setCart([]);
       setErrorMessage(null);
-      // Invalidate products to ensure server state alignment
+      if (paymentMethod === PaymentMethod.MIDTRANS) {
+        try {
+          const payRes = await createPaymentCharge({
+            order_id: completedOrder.id,
+            amount: completedOrder.total_amount,
+            payment_method: PaymentMethod.MIDTRANS,
+          });
+          setPaymentChargeResult(payRes);
+          if (payRes.snap_token) {
+            openSnapModal(payRes.snap_token, completedOrder.id);
+          }
+        } catch (e) {
+          console.error('Payment charge error:', e);
+        }
+      } else {
+        setPaymentChargeResult(null);
+      }
       queryClient.invalidateQueries({ queryKey: ['products'] });
     },
     onError: (err: any) => {
@@ -101,6 +197,7 @@ export function CheckoutTerminal() {
     const idempotencyKey = `IDEM-POS-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const payload = {
       idempotency_key: idempotencyKey,
+      payment_method: paymentMethod,
       items: cart.map((item) => ({
         sku: item.product.sku,
         quantity: item.quantity,
@@ -144,11 +241,10 @@ export function CheckoutTerminal() {
               <button
                 key={cat}
                 onClick={() => setSelectedCategory(cat)}
-                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold tracking-wide transition-all ${
-                  selectedCategory === cat
+                className={`px-3.5 py-1.5 rounded-xl text-xs font-semibold tracking-wide transition-all ${selectedCategory === cat
                     ? 'bg-brand-500 text-black shadow-lg shadow-brand-500/20'
                     : 'bg-dark-800 text-gray-300 hover:bg-dark-700 border border-gray-700/50'
-                }`}
+                  }`}
               >
                 {cat}
               </button>
@@ -158,9 +254,8 @@ export function CheckoutTerminal() {
           {/* WebSocket Live Sync Badge */}
           <div className="flex items-center space-x-2 bg-dark-800 border border-gray-700/50 px-3 py-1.5 rounded-xl text-xs">
             <div
-              className={`w-2 h-2 rounded-full ${
-                isConnected ? 'bg-brand-500 animate-pulse' : 'bg-red-500'
-              }`}
+              className={`w-2 h-2 rounded-full ${isConnected ? 'bg-brand-500 animate-pulse' : 'bg-red-500'
+                }`}
             />
             <span className="text-gray-300 font-medium">
               {isConnected ? 'WS Live Sync' : 'Connecting...'}
@@ -211,9 +306,8 @@ export function CheckoutTerminal() {
               return (
                 <div
                   key={product.id}
-                  className={`glass-card p-5 rounded-2xl flex flex-col justify-between transition-all hover:border-brand-500/40 group ${
-                    isOutOfStock ? 'opacity-50' : ''
-                  }`}
+                  className={`glass-card p-5 rounded-2xl flex flex-col justify-between transition-all hover:border-brand-500/40 group ${isOutOfStock ? 'opacity-50' : ''
+                    }`}
                 >
                   <div>
                     <div className="flex items-start justify-between mb-3">
@@ -221,11 +315,10 @@ export function CheckoutTerminal() {
                         {product.sku}
                       </span>
                       <span
-                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                          isOutOfStock
+                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${isOutOfStock
                             ? 'bg-red-500/20 text-red-400 border border-red-500/30'
                             : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
-                        }`}
+                          }`}
                       >
                         {isOutOfStock ? 'Out of Stock' : `${product.stock_quantity} left`}
                       </span>
@@ -247,11 +340,10 @@ export function CheckoutTerminal() {
                     <button
                       onClick={() => addToCart(product)}
                       disabled={isOutOfStock}
-                      className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
-                        isOutOfStock
+                      className={`flex items-center space-x-1.5 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${isOutOfStock
                           ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
                           : 'bg-brand-500 text-black hover:bg-brand-600 shadow-md shadow-brand-500/20 active:scale-95'
-                      }`}
+                        }`}
                     >
                       <Plus className="w-3.5 h-3.5" />
                       <span>{cartQuantity > 0 ? `Added (${cartQuantity})` : 'Add'}</span>
@@ -339,6 +431,33 @@ export function CheckoutTerminal() {
 
         {/* Pricing Summary & Checkout Button */}
         <div className="pt-4 border-t border-gray-700/50 mt-6 space-y-3">
+          {/* Payment Method Selector */}
+          <div className="mb-4">
+            <label className="block text-[11px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">Payment Method</label>
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => setPaymentMethod(PaymentMethod.CASH)}
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border ${paymentMethod === PaymentMethod.CASH
+                    ? 'bg-brand-500 text-black border-brand-500 shadow-md'
+                    : 'bg-dark-800 text-gray-300 border-gray-700 hover:bg-dark-700'
+                  }`}
+              >
+                Cash / Register
+              </button>
+              <button
+                type="button"
+                onClick={() => setPaymentMethod(PaymentMethod.MIDTRANS)}
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border ${paymentMethod === PaymentMethod.MIDTRANS
+                    ? 'bg-blue-600 text-white border-blue-500 shadow-md'
+                    : 'bg-dark-800 text-gray-300 border-gray-700 hover:bg-dark-700'
+                  }`}
+              >
+                Midtrans QRIS / Snap
+              </button>
+            </div>
+          </div>
+
           <div className="flex justify-between text-xs text-gray-400">
             <span>Subtotal</span>
             <span>{formatIDR(subtotal)}</span>
@@ -355,11 +474,10 @@ export function CheckoutTerminal() {
           <button
             onClick={handleCheckout}
             disabled={cart.length === 0 || checkoutMutation.isPending}
-            className={`w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 transition-all ${
-              cart.length === 0 || checkoutMutation.isPending
+            className={`w-full py-3.5 rounded-xl font-bold text-sm flex items-center justify-center space-x-2 transition-all ${cart.length === 0 || checkoutMutation.isPending
                 ? 'bg-gray-800 text-gray-500 cursor-not-allowed'
                 : 'bg-brand-500 text-black hover:bg-brand-600 shadow-xl shadow-brand-500/25 active:scale-[0.98]'
-            }`}
+              }`}
           >
             {checkoutMutation.isPending ? (
               <>
@@ -390,6 +508,20 @@ export function CheckoutTerminal() {
                 {lastCompletedOrder.transaction_id}
               </strong>
             </p>
+
+            {paymentChargeResult && (
+              <div className="mt-4 bg-blue-600/10 border border-blue-500/30 p-3 rounded-xl text-xs text-left space-y-1">
+                <p className="font-bold text-blue-400">Midtrans Embedded Payment</p>
+                <p className="text-gray-300">Snap Token: <span className="font-mono">{paymentChargeResult.snap_token}</span></p>
+                <button
+                  type="button"
+                  onClick={() => paymentChargeResult.snap_token && openSnapModal(paymentChargeResult.snap_token, lastCompletedOrder.id)}
+                  className="w-full mt-2 bg-blue-600 hover:bg-blue-500 text-white font-bold py-2 rounded-lg transition-colors shadow-md flex items-center justify-center space-x-1.5"
+                >
+                  <span>Buka Embedded Snap Modal</span> &rarr;
+                </button>
+              </div>
+            )}
 
             <div className="bg-dark-800/80 p-4 rounded-xl border border-gray-700/50 my-4 text-left text-xs space-y-2">
               <div className="flex justify-between">

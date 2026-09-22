@@ -4,23 +4,36 @@ import { useState } from 'react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Store, ShoppingBag, BarChart3, Receipt, LogIn, LogOut, User as UserIcon, ChefHat, Warehouse, TrendingUp } from 'lucide-react';
+import { Store, ShoppingBag, BarChart3, Receipt, LogIn, LogOut, User as UserIcon, ChefHat, Warehouse, TrendingUp, ShieldCheck, ChevronDown, ClipboardList, Wallet } from 'lucide-react';
 import { AuthProvider, useAuth } from '@/context/auth-context';
+import CashDrawerModal from '../components/cash-drawer-modal';
 import './globals.css';
 
 function NavbarContent({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { user, logout } = useAuth();
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false);
+  const [isCashDrawerOpen, setIsCashDrawerOpen] = useState(false);
   const isLoginPage = pathname === '/login';
 
-  const navLinks = [
+  const primaryLinks = [
     { href: '/checkout', label: 'POS Terminal', icon: ShoppingBag },
+  ];
+
+  const portalLinks = [
     { href: '/portal/kitchen', label: 'Kitchen (KDS)', icon: ChefHat },
     { href: '/portal/warehouse', label: 'Warehouse', icon: Warehouse },
     { href: '/portal/finance', label: 'Finance P&L', icon: TrendingUp },
+    { href: '/portal/orders', label: 'Order History', icon: ClipboardList },
     { href: '/dashboard', label: 'Analytics', icon: BarChart3 },
     { href: '/receipts', label: 'Receipt Scanner', icon: Receipt },
   ];
+
+  if (user?.role === 'ADMIN') {
+    portalLinks.push({ href: '/portal/setup-role', label: 'Setup Role', icon: ShieldCheck });
+  }
+
+  const isPortalActive = portalLinks.some((l) => pathname === l.href);
 
   if (isLoginPage) {
     return <main className="flex-1 w-full">{children}</main>;
@@ -50,7 +63,7 @@ function NavbarContent({ children }: { children: React.ReactNode }) {
 
           {/* Navigation Links */}
           <nav className="flex items-center space-x-1 sm:space-x-2">
-            {navLinks.map((link) => {
+            {primaryLinks.map((link) => {
               const Icon = link.icon;
               const isActive = pathname === link.href || (pathname === '/' && link.href === '/checkout');
               return (
@@ -69,8 +82,56 @@ function NavbarContent({ children }: { children: React.ReactNode }) {
               );
             })}
 
+            {/* Portals & Tools Dropdown */}
+            <div className="relative">
+              <button
+                onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+                className={`flex items-center space-x-2 px-3.5 py-2 rounded-xl text-xs font-bold transition-all ${
+                  isPortalActive
+                    ? 'bg-blue-600 text-white shadow-md shadow-blue-600/20'
+                    : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                }`}
+              >
+                <Store className="w-4 h-4" />
+                <span className="hidden sm:inline">Portals & Tools</span>
+                <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isDropdownOpen ? 'rotate-180' : ''}`} />
+              </button>
+
+              {isDropdownOpen && (
+                <div className="absolute right-0 mt-2 w-56 glass-panel rounded-2xl border border-gray-700 shadow-2xl py-2 z-50 bg-gray-900/95 backdrop-blur-xl">
+                  {portalLinks.map((link) => {
+                    const Icon = link.icon;
+                    const isActive = pathname === link.href;
+                    return (
+                      <Link
+                        key={link.href}
+                        href={link.href}
+                        onClick={() => setIsDropdownOpen(false)}
+                        className={`flex items-center space-x-2 px-4 py-2.5 text-xs font-bold transition-colors ${
+                          isActive
+                            ? 'bg-blue-600/20 text-blue-400 font-black'
+                            : 'text-gray-300 hover:bg-gray-800 hover:text-white'
+                        }`}
+                      >
+                        <Icon className="w-4 h-4 text-brand-500" />
+                        <span>{link.label}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             {user ? (
               <div className="flex items-center space-x-3 ml-4 pl-4 border-l border-gray-700">
+                <button
+                  onClick={() => setIsCashDrawerOpen(true)}
+                  className="flex items-center space-x-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 hover:bg-emerald-500/20 transition-all"
+                  title="Buka/Tutup Kasir (Cash Shift)"
+                >
+                  <Wallet className="w-4 h-4" />
+                  <span className="hidden md:inline">Kasir Shift</span>
+                </button>
                 <div className="hidden md:flex flex-col text-right">
                   <span className="text-xs font-bold text-white">{user.full_name}</span>
                   <span className="text-[10px] text-blue-400 uppercase font-semibold">{user.role}</span>
@@ -106,6 +167,8 @@ function NavbarContent({ children }: { children: React.ReactNode }) {
       <footer className="border-t border-gray-800/80 py-4 text-center text-xs text-gray-500 bg-gray-950">
         Smart AI POS & Merchant Engine • Hexagonal Golang Backend + React Next.js Frontend
       </footer>
+
+      <CashDrawerModal isOpen={isCashDrawerOpen} onClose={() => setIsCashDrawerOpen(false)} />
     </div>
   );
 }

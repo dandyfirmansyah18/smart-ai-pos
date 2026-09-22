@@ -1,6 +1,10 @@
 package dto
 
-import "time"
+import (
+	"time"
+
+	"github.com/pos-backend/internal/domain"
+)
 
 // CheckoutItemRequest defines the request DTO for an item in a checkout order.
 type CheckoutItemRequest struct {
@@ -11,6 +15,7 @@ type CheckoutItemRequest struct {
 // CheckoutRequest defines the request DTO for creating an order checkout.
 type CheckoutRequest struct {
 	IdempotencyKey string                `json:"idempotency_key" binding:"required"`
+	PaymentMethod  domain.PaymentMethod  `json:"payment_method"`
 	Items          []CheckoutItemRequest `json:"items" binding:"required,dive"`
 }
 
@@ -33,7 +38,7 @@ type OrderResponse struct {
 	ID             string              `json:"id"`
 	TransactionID  string              `json:"transaction_id"`
 	TotalAmount    float64             `json:"total_amount"`
-	Status         string              `json:"status"`
+	Status         domain.OrderStatus  `json:"status"`
 	IdempotencyKey string              `json:"idempotency_key"`
 	Items          []OrderItemResponse `json:"items"`
 	CreatedAt      time.Time           `json:"created_at"`

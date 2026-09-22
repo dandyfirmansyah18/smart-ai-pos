@@ -1,13 +1,13 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Order } from '../types';
+import { Order, OrderStatus } from '../types';
 import { Clock, CheckCircle, ChefHat, ArrowRight } from 'lucide-react';
 import { formatIDR } from '@/utils/format';
 
 interface KitchenTicketCardProps {
   order: Order;
-  onUpdateStatus: (orderId: string, newStatus: string) => void;
+  onUpdateStatus: (orderId: string, newStatus: OrderStatus) => void;
 }
 
 export default function KitchenTicketCard({ order, onUpdateStatus }: KitchenTicketCardProps) {
@@ -26,16 +26,16 @@ export default function KitchenTicketCard({ order, onUpdateStatus }: KitchenTick
     return () => clearInterval(interval);
   }, [order.created_at]);
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: OrderStatus) => {
     switch (status) {
-      case 'PENDING':
+      case OrderStatus.PENDING:
         return <span className="bg-amber-100 text-amber-800 px-2.5 py-1 rounded-full text-xs font-bold animate-pulse">PENDING</span>;
-      case 'PREPARING':
+      case OrderStatus.PREPARING:
         return <span className="bg-blue-100 text-blue-800 px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1"><ChefHat className="w-3.5 h-3.5" /> PREPARING</span>;
-      case 'READY':
+      case OrderStatus.READY:
         return <span className="bg-emerald-100 text-emerald-800 px-2.5 py-1 rounded-full text-xs font-bold flex items-center gap-1"><CheckCircle className="w-3.5 h-3.5" /> READY</span>;
-      case 'SERVED':
-      case 'COMPLETED':
+      case OrderStatus.SERVED:
+      case OrderStatus.COMPLETED:
         return <span className="bg-gray-100 text-gray-800 px-2.5 py-1 rounded-full text-xs font-bold">SERVED</span>;
       default:
         return <span className="bg-gray-100 text-gray-800 px-2.5 py-1 rounded-full text-xs font-bold">{status}</span>;
@@ -43,10 +43,11 @@ export default function KitchenTicketCard({ order, onUpdateStatus }: KitchenTick
   };
 
   return (
-    <div className={`bg-white rounded-xl shadow-md border-2 p-5 flex flex-col justify-between transition-all ${order.status === 'PENDING' ? 'border-amber-400 bg-amber-50/20' :
-      order.status === 'PREPARING' ? 'border-blue-400 bg-blue-50/20' :
-        order.status === 'READY' ? 'border-emerald-400 bg-emerald-50/20' : 'border-gray-200'
-      }`}>
+    <div className={`bg-white rounded-xl shadow-md border-2 p-5 flex flex-col justify-between transition-all ${
+      order.status === OrderStatus.PENDING ? 'border-amber-400 bg-amber-50/20' :
+      order.status === OrderStatus.PREPARING ? 'border-blue-400 bg-blue-50/20' :
+      order.status === OrderStatus.READY ? 'border-emerald-400 bg-emerald-50/20' : 'border-gray-200'
+    }`}>
       <div>
         <div className="flex justify-between items-start mb-3">
           <div>
@@ -66,10 +67,13 @@ export default function KitchenTicketCard({ order, onUpdateStatus }: KitchenTick
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">Order Items</p>
           <div className="divide-y divide-gray-100 max-h-48 overflow-y-auto">
             {order.items && order.items.map((item, idx) => (
-              <div key={item.id || idx} className="py-2 flex justify-between items-center text-sm">
-                <span className="font-medium text-gray-800">
-                  <span className="bg-gray-200 text-gray-800 px-2 py-0.5 rounded font-bold text-xs mr-2">{item.quantity}x</span>
-                  Product ID: {item.product_id.slice(0, 8)}...
+              <div key={item.id || idx} className="py-2.5 flex justify-between items-center text-sm">
+                <span className="font-medium text-gray-800 flex flex-col">
+                  <span className="flex items-center">
+                    <span className="bg-gray-200 text-gray-800 px-2.5 py-0.5 rounded font-bold text-xs mr-2">{item.quantity}x</span>
+                    <strong className="text-gray-900">{item.name || 'Menu Item'}</strong>
+                  </span>
+                  <span className="text-[10px] text-gray-500 font-mono mt-0.5 ml-7">SKU: {item.sku || 'N/A'}</span>
                 </span>
                 <span className="text-gray-600 font-mono">{formatIDR(item.unit_price * item.quantity)}</span>
               </div>
@@ -79,31 +83,31 @@ export default function KitchenTicketCard({ order, onUpdateStatus }: KitchenTick
       </div>
 
       <div className="pt-3 border-t border-gray-100 flex gap-2">
-        {order.status === 'PENDING' && (
+        {order.status === OrderStatus.PENDING && (
           <button
-            onClick={() => onUpdateStatus(order.id, 'PREPARING')}
+            onClick={() => onUpdateStatus(order.id, OrderStatus.PREPARING)}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white py-2.5 px-4 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 shadow-sm transition-colors"
           >
             Start Preparing <ArrowRight className="w-4 h-4" />
           </button>
         )}
-        {order.status === 'PREPARING' && (
+        {order.status === OrderStatus.PREPARING && (
           <button
-            onClick={() => onUpdateStatus(order.id, 'READY')}
+            onClick={() => onUpdateStatus(order.id, OrderStatus.READY)}
             className="w-full bg-emerald-600 hover:bg-emerald-700 text-white py-2.5 px-4 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 shadow-sm transition-colors"
           >
             Mark Ready <CheckCircle className="w-4 h-4" />
           </button>
         )}
-        {order.status === 'READY' && (
+        {order.status === OrderStatus.READY && (
           <button
-            onClick={() => onUpdateStatus(order.id, 'SERVED')}
+            onClick={() => onUpdateStatus(order.id, OrderStatus.SERVED)}
             className="w-full bg-gray-800 hover:bg-gray-900 text-white py-2.5 px-4 rounded-lg font-semibold text-sm flex items-center justify-center gap-2 shadow-sm transition-colors"
           >
             Mark Served / Complete
           </button>
         )}
-        {order.status === 'SERVED' && (
+        {(order.status === OrderStatus.SERVED || order.status === OrderStatus.COMPLETED) && (
           <div className="w-full text-center py-2 text-xs font-semibold text-gray-400 uppercase tracking-wider">
             Order Completed
           </div>

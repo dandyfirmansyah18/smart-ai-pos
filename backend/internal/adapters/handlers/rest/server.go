@@ -13,14 +13,18 @@ import (
 )
 
 type Server struct {
-	router         *gin.Engine
-	cfg            *config.Config
-	productRepo    outbound.ProductRepository
-	orderRepo      outbound.OrderRepository
-	orderUseCase   inbound.OrderUseCase
-	hub            *ws.Hub
-	receiptUseCase inbound.ReceiptUseCase
-	authUseCase    inbound.AuthUseCase
+	router            *gin.Engine
+	cfg               *config.Config
+	productRepo       outbound.ProductRepository
+	orderRepo         outbound.OrderRepository
+	orderUseCase      inbound.OrderUseCase
+	hub               *ws.Hub
+	receiptUseCase    inbound.ReceiptUseCase
+	authUseCase       inbound.AuthUseCase
+	cashShiftUseCase  inbound.CashShiftUseCase
+	financeUseCase    inbound.FinanceUseCase
+	accessMenuUseCase inbound.AccessMenuUseCase
+	paymentUseCase    inbound.PaymentUseCase
 }
 
 func NewServer(
@@ -49,6 +53,10 @@ func NewServer(
 	var ru inbound.ReceiptUseCase
 	var au inbound.AuthUseCase
 	var ordRepo outbound.OrderRepository
+	var csUcase inbound.CashShiftUseCase
+	var finUcase inbound.FinanceUseCase
+	var amUcase inbound.AccessMenuUseCase
+	var payUcase inbound.PaymentUseCase
 
 	for _, dep := range optionalDeps {
 		switch d := dep.(type) {
@@ -58,18 +66,30 @@ func NewServer(
 			au = d
 		case outbound.OrderRepository:
 			ordRepo = d
+		case inbound.CashShiftUseCase:
+			csUcase = d
+		case inbound.FinanceUseCase:
+			finUcase = d
+		case inbound.AccessMenuUseCase:
+			amUcase = d
+		case inbound.PaymentUseCase:
+			payUcase = d
 		}
 	}
 
 	s := &Server{
-		router:         r,
-		cfg:            cfg,
-		productRepo:    productRepo,
-		orderRepo:      ordRepo,
-		orderUseCase:   orderUseCase,
-		hub:            hub,
-		receiptUseCase: ru,
-		authUseCase:    au,
+		router:            r,
+		cfg:               cfg,
+		productRepo:       productRepo,
+		orderRepo:         ordRepo,
+		orderUseCase:      orderUseCase,
+		hub:               hub,
+		receiptUseCase:    ru,
+		authUseCase:       au,
+		cashShiftUseCase:  csUcase,
+		financeUseCase:    finUcase,
+		accessMenuUseCase: amUcase,
+		paymentUseCase:    payUcase,
 	}
 
 	s.setupRoutes()
@@ -124,6 +144,47 @@ func (s *Server) setupRoutes() {
 				kitchenGroup.GET("/orders", kitchenHandler.ListActiveOrders)
 				kitchenGroup.PATCH("/orders/:id/status", kitchenHandler.UpdateOrderStatus)
 			}
+		}
+
+		if s.accessMenuUseCase != nil {
+			accessHandler := NewAccessMenuHandler(s.accessMenuUseCase)
+			api.GET("/access-menus", accessHandler.GetAccessMenus)
+			api.GET("/access-menus/roles", accessHandler.GetRoleAccessMappings)
+
+			roleProtected := api.Group("/access-menus")
+			if s.authUseCase != nil {
+				roleProtected.Use(middleware.AuthMiddleware(s.cfg.JWTSecret))
+				roleProtected.Use(middleware.RequireRole("ADMIN"))
+			}
+			{
+				roleProtected.PUT("/roles", accessHandler.UpdateRoleAccess)
+			}
+		}
+
+		if s.cashShiftUseCase != nil {
+			cashHandler := NewCashShiftHandler(s.cashShiftUseCase)
+			cashGroup := api.Group("/cash-shifts")
+			if s.authUseCase != nil {
+				cashGroup.Use(middleware.AuthMiddleware(s.cfg.JWTSecret))
+			}
+			{
+				cashGroup.POST("/open", cashHandler.OpenShift)
+				cashGroup.GET("/current", cashHandler.GetCurrentShift)
+				cashGroup.POST("/close", cashHandler.CloseShift)
+			}
+		}
+
+		if s.financeUseCase != nil {
+			financeHandler := NewFinanceHandler(s.financeUseCase)
+			api.GET("/orders/history", financeHandler.GetOrderHistory)
+			api.GET("/finance/profit-loss", financeHandler.GetProfitLoss)
+		}
+
+		if s.paymentUseCase != nil {
+			paymentHandler := NewPaymentHandler(s.paymentUseCase)
+			api.POST("/payments/charge", paymentHandler.CreatePaymentCharge)
+			api.GET("/payments/order/:order_id", paymentHandler.GetPaymentByOrderID)
+			api.POST("/payments/webhook", paymentHandler.HandleWebhook)
 		}
 
 		if s.authUseCase != nil {

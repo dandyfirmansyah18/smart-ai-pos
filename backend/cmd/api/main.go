@@ -6,15 +6,19 @@ import (
 	"github.com/pos-backend/config"
 	"github.com/pos-backend/internal/adapters/handlers/rest"
 	"github.com/pos-backend/internal/adapters/handlers/ws"
+	"github.com/pos-backend/internal/adapters/infrastructure/payment"
 	"github.com/pos-backend/internal/adapters/infrastructure/pg"
 	"github.com/pos-backend/internal/adapters/infrastructure/redis"
 	"github.com/pos-backend/internal/adapters/infrastructure/vision"
 	"github.com/pos-backend/internal/ports/inbound"
+	"github.com/pos-backend/pkg/logger"
 )
 
 func main() {
-	// 1. Load Viper Configuration
+	// 1. Load Viper Configuration & Initialize Logger
 	cfg := config.Load()
+	logger.Init(cfg.LogLevel)
+	logger.Log.Info().Str("port", cfg.Port).Str("env", cfg.Env).Msg("Starting Smart AI POS Engine Server...")
 
 	// 2. Initialize WebSocket Broadcaster Hub & start background event loop
 	wsHub := ws.NewHub()
@@ -43,15 +47,24 @@ func main() {
 	orderRepo := pg.NewOrderPGRepository(db)
 	receiptRepo := pg.NewReceiptPGRepository(db)
 	userRepo := pg.NewUserPGRepository(db)
+	cashShiftRepo := pg.NewCashShiftPGRepository(db)
+	financeRepo := pg.NewFinancePGRepository(db)
+	accessMenuRepo := pg.NewAccessMenuPGRepository(db)
+	paymentRepo := pg.NewPaymentPGRepository(db)
 	visionClient := vision.NewVisionClientImpl(cfg)
+	midtransClient := payment.NewMidtransClient(cfg)
 
 	// 6. Initialize Driver Use Cases
 	orderUseCase := inbound.NewOrderUseCaseImpl(db, productRepo, orderRepo, lockService, wsHub)
 	receiptUseCase := inbound.NewReceiptUseCaseImpl(visionClient, receiptRepo)
 	authUseCase := inbound.NewAuthUseCaseImpl(userRepo, cfg.JWTSecret)
+	cashShiftUseCase := inbound.NewCashShiftUseCaseImpl(cashShiftRepo)
+	financeUseCase := inbound.NewFinanceUseCaseImpl(financeRepo)
+	accessMenuUseCase := inbound.NewAccessMenuUseCaseImpl(accessMenuRepo)
+	paymentUseCase := inbound.NewPaymentUseCaseImpl(paymentRepo, midtransClient, orderRepo, wsHub)
 
 	// 7. Initialize REST & WebSocket HTTP Server
-	server := rest.NewServer(cfg, productRepo, orderUseCase, wsHub, receiptUseCase, authUseCase, orderRepo)
+	server := rest.NewServer(cfg, productRepo, orderUseCase, wsHub, receiptUseCase, authUseCase, orderRepo, cashShiftUseCase, financeUseCase, accessMenuUseCase, paymentUseCase)
 
 	log.Printf("Starting Smart AI POS Engine Server on port :%s (env: %s)...", cfg.Port, cfg.Env)
 	log.Printf("Real-time WebSocket endpoint available at ws://localhost:%s/ws", cfg.Port)
