@@ -50,7 +50,7 @@ func TestMockOrderRepository(t *testing.T) {
 	}
 
 	// Test GetByIdempotencyKey
-	foundIdem, err := mockRepo.GetByIdempotencyKey(ctx, "IDEM-999")
+	foundIdem, err := mockRepo.GetByIdempotencyKey(ctx, nil, "IDEM-999")
 	if err != nil {
 		t.Fatalf("expected no error getting order by idempotency key, got %v", err)
 	}

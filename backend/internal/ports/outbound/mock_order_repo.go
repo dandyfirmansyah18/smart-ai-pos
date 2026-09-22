@@ -37,7 +37,7 @@ func (m *MockOrderRepository) GetByID(ctx context.Context, id string) (*domain.O
 	return o, nil
 }
 
-func (m *MockOrderRepository) GetByIdempotencyKey(ctx context.Context, key string) (*domain.Order, error) {
+func (m *MockOrderRepository) GetByIdempotencyKey(ctx context.Context, tx *sql.Tx, key string) (*domain.Order, error) {
 	for _, o := range m.Orders {
 		if o.IdempotencyKey == key {
 			return o, nil

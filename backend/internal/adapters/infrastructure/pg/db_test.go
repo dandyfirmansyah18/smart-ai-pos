@@ -25,7 +25,7 @@ func TestConfigAndDBSetup(t *testing.T) {
 	}()
 
 	cfg := config.Load()
-	expectedDSN := "postgres://testuser:secret@127.0.0.1:5432/testdb?sslmode=disable"
+	expectedDSN := "postgres://testuser:secret@127.0.0.1:5432/testdb?sslmode=disable&connect_timeout=3"
 	if cfg.DSN() != expectedDSN {
 		t.Errorf("expected DSN %s, got %s", expectedDSN, cfg.DSN())
 	}

@@ -91,7 +91,7 @@ func (r *OrderPGRepository) GetByID(ctx context.Context, id string) (*domain.Ord
 	return &o, nil
 }
 
-func (r *OrderPGRepository) GetByIdempotencyKey(ctx context.Context, key string) (*domain.Order, error) {
+func (r *OrderPGRepository) GetByIdempotencyKey(ctx context.Context, tx *sql.Tx, key string) (*domain.Order, error) {
 	if key == "" {
 		return nil, domain.ErrOrderNotFound
 	}
@@ -100,9 +100,16 @@ func (r *OrderPGRepository) GetByIdempotencyKey(ctx context.Context, key string)
 	               FROM orders WHERE idempotency_key = $1`
 
 	var o domain.Order
-	err := r.db.QueryRowContext(ctx, orderQuery, key).Scan(
-		&o.ID, &o.TransactionID, &o.TotalAmount, &o.Status, &o.IdempotencyKey, &o.CreatedAt, &o.UpdatedAt,
-	)
+	var err error
+	if tx != nil {
+		err = tx.QueryRowContext(ctx, orderQuery, key).Scan(
+			&o.ID, &o.TransactionID, &o.TotalAmount, &o.Status, &o.IdempotencyKey, &o.CreatedAt, &o.UpdatedAt,
+		)
+	} else {
+		err = r.db.QueryRowContext(ctx, orderQuery, key).Scan(
+			&o.ID, &o.TransactionID, &o.TotalAmount, &o.Status, &o.IdempotencyKey, &o.CreatedAt, &o.UpdatedAt,
+		)
+	}
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			return nil, domain.ErrOrderNotFound
@@ -151,24 +158,24 @@ func (r *OrderPGRepository) ListActiveOrders(ctx context.Context) ([]domain.Orde
 	if err != nil {
 		return nil, fmt.Errorf("failed to list active orders: %w", err)
 	}
-	defer rows.Close()
 
 	var orders []domain.Order
 	for rows.Next() {
 		var o domain.Order
 		if err := rows.Scan(&o.ID, &o.TransactionID, &o.TotalAmount, &o.Status, &o.IdempotencyKey, &o.CreatedAt, &o.UpdatedAt); err != nil {
+			rows.Close()
 			return nil, fmt.Errorf("failed to scan order row: %w", err)
 		}
-		items, err := r.getOrderItems(ctx, o.ID)
-			if err != nil {
-				return nil, err
-			}
-		o.Items = items
 		orders = append(orders, o)
 	}
+	rows.Close()
 
-	if err := rows.Err(); err != nil {
-		return nil, fmt.Errorf("error iterating order rows: %w", err)
+	for i := range orders {
+		items, err := r.getOrderItems(ctx, orders[i].ID)
+		if err != nil {
+			return nil, err
+		}
+		orders[i].Items = items
 	}
 
 	return orders, nil

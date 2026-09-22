@@ -12,6 +12,9 @@ type Config struct {
 	Port          string
 	Env           string
 	LogLevel      string
+	DBType        string
+	SQLitePath    string
+	AutoFailover  bool
 	DBHost        string
 	DBPort        string
 	DBUser        string
@@ -36,12 +39,15 @@ type AppConfig struct {
 		LogLevel string `mapstructure:"log_level"`
 	} `mapstructure:"server"`
 	Database struct {
-		Host     string `mapstructure:"host"`
-		Port     string `mapstructure:"port"`
-		User     string `mapstructure:"user"`
-		Password string `mapstructure:"password"`
-		Name     string `mapstructure:"name"`
-		SSLMode  string `mapstructure:"ssl_mode"`
+		Type         string `mapstructure:"type"`
+		SQLitePath   string `mapstructure:"sqlite_path"`
+		AutoFailover bool   `mapstructure:"auto_failover"`
+		Host         string `mapstructure:"host"`
+		Port         string `mapstructure:"port"`
+		User         string `mapstructure:"user"`
+		Password     string `mapstructure:"password"`
+		Name         string `mapstructure:"name"`
+		SSLMode      string `mapstructure:"ssl_mode"`
 	} `mapstructure:"database"`
 	Redis struct {
 		Addr     string `mapstructure:"addr"`
@@ -69,6 +75,9 @@ func Load() *Config {
 	v.SetDefault("server.port", "8080")
 	v.SetDefault("server.env", "development")
 	v.SetDefault("server.log_level", "info")
+	v.SetDefault("database.type", "postgres")
+	v.SetDefault("database.sqlite_path", "./pos_local.db")
+	v.SetDefault("database.auto_failover", true)
 	v.SetDefault("database.host", "localhost")
 	v.SetDefault("database.port", "5432")
 	v.SetDefault("database.user", "postgres")
@@ -93,6 +102,9 @@ func Load() *Config {
 	v.BindEnv("server.port", "PORT")
 	v.BindEnv("server.env", "ENV")
 	v.BindEnv("server.log_level", "LOG_LEVEL")
+	v.BindEnv("database.type", "DB_TYPE")
+	v.BindEnv("database.sqlite_path", "SQLITE_PATH")
+	v.BindEnv("database.auto_failover", "AUTO_FAILOVER")
 	v.BindEnv("database.host", "DB_HOST")
 	v.BindEnv("database.port", "DB_PORT")
 	v.BindEnv("database.user", "DB_USER")
@@ -133,10 +145,22 @@ func Load() *Config {
 		logLevel = "info"
 	}
 
+	dbType := appCfg.Database.Type
+	if dbType == "" {
+		dbType = "postgres"
+	}
+	sqlitePath := appCfg.Database.SQLitePath
+	if sqlitePath == "" {
+		sqlitePath = "./pos_local.db"
+	}
+
 	return &Config{
 		Port:                 appCfg.Server.Port,
 		Env:                  appCfg.Server.Env,
 		LogLevel:             logLevel,
+		DBType:               dbType,
+		SQLitePath:           sqlitePath,
+		AutoFailover:         appCfg.Database.AutoFailover,
 		DBHost:               appCfg.Database.Host,
 		DBPort:               appCfg.Database.Port,
 		DBUser:               appCfg.Database.User,
@@ -156,6 +180,7 @@ func Load() *Config {
 }
 
 func (c *Config) DSN() string {
-	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s",
+	return fmt.Sprintf("postgres://%s:%s@%s:%s/%s?sslmode=%s&connect_timeout=3",
 		c.DBUser, c.DBPassword, c.DBHost, c.DBPort, c.DBName, c.DBSslMode)
 }
+

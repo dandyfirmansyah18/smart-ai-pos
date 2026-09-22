@@ -112,6 +112,23 @@ export const updateOrderStatus = async (orderId: string, status: OrderStatus): P
   await api.patch(`/kitchen/orders/${orderId}/status`, { status });
 };
 
+export interface SyncStatus {
+  is_online: boolean;
+  pending_orders: number;
+  pending_shifts: number;
+  pending_payments: number;
+  last_synced_at?: string;
+}
+
+export const fetchSyncStatus = async (): Promise<SyncStatus> => {
+  const response = await api.get<SyncStatus>('/sync/status');
+  return response.data;
+};
+
+export const triggerSync = async (): Promise<void> => {
+  await api.post('/sync/trigger', {});
+};
+
 export const fetchOrderHistory = async (): Promise<Order[]> => {
   const response = await api.get<Order[]>('/orders/history');
   return response.data;

@@ -3,8 +3,11 @@ server:
   port: "8080"
   env: "development"
 
-# PostgreSQL Database Configuration
+# PostgreSQL or SQLite Database Configuration
 database:
+  type: "postgres" # options: postgres, sqlite
+  sqlite_path: "./pos_local.db"
+  auto_failover: true
   host: "localhost"
   port: "5432"
   user: "postgres"

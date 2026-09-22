@@ -21,3 +21,8 @@ vendor/
 # Local configuration files (ignore local config.yaml, track config.example.yaml)
 config/config.yaml
 !config/config.example.yaml
+
+# Local SQLite databases
+*.db
+*.db-shm
+*.db-wal

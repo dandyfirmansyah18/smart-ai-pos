@@ -4,9 +4,11 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/pos-backend/internal/adapters/infrastructure/sqlite"
 	"github.com/pos-backend/internal/domain"
 	"github.com/pos-backend/internal/dto"
 	"github.com/pos-backend/internal/ports/outbound"
@@ -40,6 +42,29 @@ func NewOrderUseCaseImpl(
 	}
 }
 
+func isConnectionError(err error) bool {
+	if err == nil {
+		return false
+	}
+	s := strings.ToLower(err.Error())
+	return strings.Contains(s, "connection refused") ||
+		strings.Contains(s, "bad connection") ||
+		strings.Contains(s, "dial tcp") ||
+		strings.Contains(s, "i/o timeout") ||
+		strings.Contains(s, "closed") ||
+		strings.Contains(s, "connection reset") ||
+		strings.Contains(s, "no connection") ||
+		strings.Contains(s, "server closed") ||
+		strings.Contains(s, "eof") ||
+		strings.Contains(s, "broken pipe") ||
+		strings.Contains(s, "unreachable") ||
+		strings.Contains(s, "refused") ||
+		strings.Contains(s, "timeout") ||
+		strings.Contains(s, "cannot connect") ||
+		strings.Contains(s, "database is closed") ||
+		strings.Contains(s, "driver: bad connection")
+}
+
 func (s *OrderUseCaseImpl) Checkout(ctx context.Context, req dto.CheckoutRequest) (*domain.Order, error) {
 	if req.IdempotencyKey == "" {
 		return nil, domain.ErrInvalidOrder
@@ -48,25 +73,65 @@ func (s *OrderUseCaseImpl) Checkout(ctx context.Context, req dto.CheckoutRequest
 		return nil, domain.ErrInvalidOrder
 	}
 
-	// 1. Acquire Redis lock for idempotency key
+	// 1. Acquire Redis lock for idempotency key (if Redis is available)
 	lockKey := "lock:checkout:" + req.IdempotencyKey
-	acquired, err := s.lockService.AcquireLock(ctx, lockKey, 15*time.Second)
-	if err != nil {
-		return nil, fmt.Errorf("failed to acquire checkout lock: %w", err)
-	}
-	if !acquired {
-		return nil, domain.ErrDuplicateIdempotencyKey
-	}
-	defer s.lockService.ReleaseLock(ctx, lockKey)
-
-	// 2. Start PostgreSQL Transaction (if DB is provided)
-	var tx *sql.Tx
-	if s.db != nil {
-		var txErr error
-		tx, txErr = s.db.BeginTx(ctx, nil)
-		if txErr != nil {
-			return nil, fmt.Errorf("failed to begin transaction: %w", txErr)
+	if s.lockService != nil {
+		acquired, err := s.lockService.AcquireLock(ctx, lockKey, 15*time.Second)
+		if err != nil {
+			// If Redis is unreachable in offline mode, continue without Redis lock
+			if !isConnectionError(err) {
+				return nil, fmt.Errorf("failed to acquire checkout lock: %w", err)
+			}
+		} else if !acquired {
+			return nil, domain.ErrDuplicateIdempotencyKey
+		} else {
+			defer s.lockService.ReleaseLock(ctx, lockKey)
 		}
+	}
+
+	// 2. Database Connection Check & Transaction Initialization
+	var tx *sql.Tx
+	activeDB := s.db
+	activeProductRepo := s.productRepo
+	activeOrderRepo := s.orderRepo
+
+	useSQLite := false
+	if activeDB != nil {
+		pingCtx, pingCancel := context.WithTimeout(ctx, 2*time.Second)
+		pingErr := activeDB.PingContext(pingCtx)
+		pingCancel()
+
+		if pingErr != nil || isConnectionError(pingErr) {
+			useSQLite = true
+		} else {
+			var txErr error
+			tx, txErr = activeDB.BeginTx(ctx, nil)
+			if txErr != nil || isConnectionError(txErr) {
+				useSQLite = true
+			}
+		}
+	}
+
+	var localDB *sql.DB
+	if useSQLite {
+		var sqliteErr error
+		localDB, sqliteErr = sqlite.NewSQLiteDB("./pos_local.db")
+		if sqliteErr != nil || localDB == nil {
+			return nil, fmt.Errorf("failed to open local sqlite database fallback: %w", sqliteErr)
+		}
+		defer localDB.Close()
+		activeDB = localDB
+		activeProductRepo = sqlite.NewProductSQLiteRepository(localDB)
+		activeOrderRepo = sqlite.NewOrderSQLiteRepository(localDB)
+
+		var txErr error
+		tx, txErr = activeDB.BeginTx(ctx, nil)
+		if txErr != nil {
+			return nil, fmt.Errorf("failed to begin sqlite transaction: %w", txErr)
+		}
+	}
+
+	if tx != nil {
 		defer func() {
 			if tx != nil {
 				_ = tx.Rollback()
@@ -75,7 +140,7 @@ func (s *OrderUseCaseImpl) Checkout(ctx context.Context, req dto.CheckoutRequest
 	}
 
 	// 3. Check if order with idempotency key already exists in DB
-	existingOrder, err := s.orderRepo.GetByIdempotencyKey(ctx, req.IdempotencyKey)
+	existingOrder, err := activeOrderRepo.GetByIdempotencyKey(ctx, tx, req.IdempotencyKey)
 	if err == nil && existingOrder != nil {
 		if tx != nil {
 			_ = tx.Commit()
@@ -94,7 +159,7 @@ func (s *OrderUseCaseImpl) Checkout(ctx context.Context, req dto.CheckoutRequest
 			return nil, domain.ErrInvalidOrder
 		}
 
-		product, err := s.productRepo.GetBySKUWithLock(ctx, tx, item.SKU)
+		product, err := activeProductRepo.GetBySKUWithLock(ctx, tx, item.SKU)
 		if err != nil {
 			return nil, err
 		}
@@ -105,7 +170,7 @@ func (s *OrderUseCaseImpl) Checkout(ctx context.Context, req dto.CheckoutRequest
 		}
 
 		newStock := product.StockQuantity - item.Quantity
-		if err := s.productRepo.UpdateStock(ctx, tx, item.SKU, newStock); err != nil {
+		if err := activeProductRepo.UpdateStock(ctx, tx, item.SKU, newStock); err != nil {
 			return nil, err
 		}
 
@@ -146,7 +211,7 @@ func (s *OrderUseCaseImpl) Checkout(ctx context.Context, req dto.CheckoutRequest
 	}
 
 	// 6. Save Order & OrderItems
-	if err := s.orderRepo.CreateOrder(ctx, tx, order); err != nil {
+	if err := activeOrderRepo.CreateOrder(ctx, tx, order); err != nil {
 		return nil, fmt.Errorf("failed to create order: %w", err)
 	}
 

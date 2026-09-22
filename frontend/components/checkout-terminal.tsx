@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { fetchProducts, checkoutOrder, createPaymentCharge, notifyPaymentStatus } from '../services/api';
+import { fetchProducts, checkoutOrder, createPaymentCharge, notifyPaymentStatus, fetchSyncStatus } from '../services/api';
 import { Product, CartItem, Order, PaymentMethod, OrderPayment, OrderStatus } from '../types';
 import { useWebSocketSync } from '../hooks/use-websocket';
 import { formatIDR } from '../utils/format';
@@ -66,6 +66,14 @@ export function CheckoutTerminal() {
     queryKey: ['products'],
     queryFn: fetchProducts,
   });
+
+  const { data: syncStatus } = useQuery({
+    queryKey: ['syncStatus'],
+    queryFn: fetchSyncStatus,
+    refetchInterval: 15000,
+  });
+
+  const isOffline = syncStatus && !syncStatus.is_online;
 
   const openSnapModal = async (token: string, orderId?: string) => {
     await loadSnapScript();
@@ -433,7 +441,9 @@ export function CheckoutTerminal() {
         <div className="pt-4 border-t border-gray-700/50 mt-6 space-y-3">
           {/* Payment Method Selector */}
           <div className="mb-4">
-            <label className="block text-[11px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">Payment Method</label>
+            <label className="block text-[11px] font-semibold text-gray-400 mb-1.5 uppercase tracking-wider">
+              Payment Method {isOffline && <span className="text-amber-400 lowercase font-normal">(offline mode: cash only)</span>}
+            </label>
             <div className="grid grid-cols-2 gap-2">
               <button
                 type="button"
@@ -447,13 +457,17 @@ export function CheckoutTerminal() {
               </button>
               <button
                 type="button"
-                onClick={() => setPaymentMethod(PaymentMethod.MIDTRANS)}
-                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border ${paymentMethod === PaymentMethod.MIDTRANS
+                onClick={() => !isOffline && setPaymentMethod(PaymentMethod.MIDTRANS)}
+                disabled={isOffline}
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border ${isOffline
+                    ? 'bg-gray-800/50 text-gray-600 border-gray-800 cursor-not-allowed'
+                    : paymentMethod === PaymentMethod.MIDTRANS
                     ? 'bg-blue-600 text-white border-blue-500 shadow-md'
                     : 'bg-dark-800 text-gray-300 border-gray-700 hover:bg-dark-700'
                   }`}
+                title={isOffline ? 'Midtrans online payment is unavailable in offline mode' : ''}
               >
-                Midtrans QRIS / Snap
+                Midtrans {isOffline && '🔒'}
               </button>
             </div>
           </div>
