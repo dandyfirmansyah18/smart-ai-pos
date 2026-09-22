@@ -25,6 +25,7 @@ type Server struct {
 	financeUseCase    inbound.FinanceUseCase
 	accessMenuUseCase inbound.AccessMenuUseCase
 	paymentUseCase    inbound.PaymentUseCase
+	syncUseCase       inbound.SyncUseCase
 }
 
 func NewServer(
@@ -57,6 +58,7 @@ func NewServer(
 	var finUcase inbound.FinanceUseCase
 	var amUcase inbound.AccessMenuUseCase
 	var payUcase inbound.PaymentUseCase
+	var syncUcase inbound.SyncUseCase
 
 	for _, dep := range optionalDeps {
 		switch d := dep.(type) {
@@ -74,6 +76,8 @@ func NewServer(
 			amUcase = d
 		case inbound.PaymentUseCase:
 			payUcase = d
+		case inbound.SyncUseCase:
+			syncUcase = d
 		}
 	}
 
@@ -90,6 +94,7 @@ func NewServer(
 		financeUseCase:    finUcase,
 		accessMenuUseCase: amUcase,
 		paymentUseCase:    payUcase,
+		syncUseCase:       syncUcase,
 	}
 
 	s.setupRoutes()
@@ -185,6 +190,12 @@ func (s *Server) setupRoutes() {
 			api.POST("/payments/charge", paymentHandler.CreatePaymentCharge)
 			api.GET("/payments/order/:order_id", paymentHandler.GetPaymentByOrderID)
 			api.POST("/payments/webhook", paymentHandler.HandleWebhook)
+		}
+
+		if s.syncUseCase != nil {
+			syncHandler := NewSyncHandler(s.syncUseCase)
+			api.GET("/sync/status", syncHandler.GetSyncStatus)
+			api.POST("/sync/trigger", syncHandler.TriggerSync)
 		}
 
 		if s.authUseCase != nil {

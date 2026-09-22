@@ -10,5 +10,3 @@ act as senior software engineer again, saya ingin membuat sebuah adjustment lagi
     - oh iya, untuk backend, nanti akan ada endpoint /webhook dan saya ingin update status order otomatis berdasarkan response dari midtrans
     - related dengan implementation ini jadi sepertinya perlu membuat table baru untuk menyimpan transaction data yang berhubungan dengan midtrans, jadi seperti menyimpan historycal or log dari midtrans, jadi seperti menyimpan historycal / log dari midtrans yang berhubungan dengan order tersebut, jadi nanti ketika order sudah berhasil, status order berubah menjadi paid. bisa juga dibuat table semacam order_payments.
 3. coba seperti itu dulu kira2 promptnya sudah cukup atau tidak.
-
-    

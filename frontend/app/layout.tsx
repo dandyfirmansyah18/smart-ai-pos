@@ -7,6 +7,7 @@ import { usePathname } from 'next/navigation';
 import { Store, ShoppingBag, BarChart3, Receipt, LogIn, LogOut, User as UserIcon, ChefHat, Warehouse, TrendingUp, ShieldCheck, ChevronDown, ClipboardList, Wallet } from 'lucide-react';
 import { AuthProvider, useAuth } from '@/context/auth-context';
 import CashDrawerModal from '../components/cash-drawer-modal';
+import { OfflineIndicator } from '../components/offline-indicator';
 import './globals.css';
 
 function NavbarContent({ children }: { children: React.ReactNode }) {
@@ -63,6 +64,7 @@ function NavbarContent({ children }: { children: React.ReactNode }) {
 
           {/* Navigation Links */}
           <nav className="flex items-center space-x-1 sm:space-x-2">
+            <OfflineIndicator />
             {primaryLinks.map((link) => {
               const Icon = link.icon;
               const isActive = pathname === link.href || (pathname === '/' && link.href === '/checkout');
