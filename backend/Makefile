@@ -8,7 +8,7 @@ test:
 
 # Generate Swagger documentation
 swag:
-	swag init -g cmd/api/main.go -o api/swagger
+	swag init -g cmd/api/main.go -o docs/swagger
 
 # Generate mocks
 mock:
@@ -24,4 +24,4 @@ run:
 
 # Clean build artifacts
 clean:
-	rm -rf bin/ api/swagger/
+	rm -rf bin/ docs/swagger/
