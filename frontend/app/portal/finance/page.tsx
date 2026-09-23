@@ -2,6 +2,7 @@
 
 import React from 'react';
 import ProtectedRoute from '../../../components/protected-route';
+import { UserRole } from '../../../types';
 import { useQuery } from '@tanstack/react-query';
 import { fetchProducts } from '../../../services/api';
 import { formatIDR } from '../../../utils/format';
@@ -20,7 +21,7 @@ export default function FinancePortalPage() {
   const profitMarginPercent = totalCatalogValue > 0 ? (grossProfit / totalCatalogValue) * 100 : 0;
 
   return (
-    <ProtectedRoute allowedRoles={['ADMIN', 'CASHIER']}>
+    <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.CASHIER]}>
       <div className="space-y-6">
         <header className="flex justify-between items-center bg-gray-900 border border-gray-800 p-6 rounded-2xl">
           <div className="flex items-center space-x-3">

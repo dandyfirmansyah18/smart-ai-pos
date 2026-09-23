@@ -24,6 +24,12 @@ func NewKitchenHandler(orderRepo outbound.OrderRepository, hub *ws.Hub) *Kitchen
 }
 
 // ListActiveOrders GET /api/kitchen/orders
+// @Summary List active kitchen orders
+// @Description Get list of active orders for kitchen display system
+// @Tags Kitchen
+// @Produce json
+// @Success 200 {array} domain.Order
+// @Router /kitchen/orders [get]
 func (h *KitchenHandler) ListActiveOrders(c *gin.Context) {
 	orders, err := h.orderRepo.ListActiveOrders(c.Request.Context())
 	if err != nil {
@@ -35,6 +41,15 @@ func (h *KitchenHandler) ListActiveOrders(c *gin.Context) {
 }
 
 // UpdateOrderStatus PATCH /api/kitchen/orders/:id/status
+// @Summary Update order status
+// @Description Update order status (preparing, ready, served, completed)
+// @Tags Kitchen
+// @Accept json
+// @Produce json
+// @Param id path string true "Order ID"
+// @Param request body dto.UpdateOrderStatusRequest true "New order status"
+// @Success 200 {object} object
+// @Router /kitchen/orders/{id}/status [patch]
 func (h *KitchenHandler) UpdateOrderStatus(c *gin.Context) {
 	id := c.Param("id")
 	if id == "" {

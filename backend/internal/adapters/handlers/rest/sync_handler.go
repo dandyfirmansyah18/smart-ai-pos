@@ -15,6 +15,13 @@ func NewSyncHandler(syncUseCase inbound.SyncUseCase) *SyncHandler {
 	return &SyncHandler{syncUseCase: syncUseCase}
 }
 
+// GetSyncStatus GET /api/sync/status
+// @Summary Get sync status
+// @Description Check offline sync status and pending records count
+// @Tags Sync
+// @Produce json
+// @Success 200 {object} inbound.SyncStatusResponse
+// @Router /sync/status [get]
 func (h *SyncHandler) GetSyncStatus(c *gin.Context) {
 	status, err := h.syncUseCase.GetSyncStatus(c.Request.Context())
 	if err != nil {
@@ -24,6 +31,14 @@ func (h *SyncHandler) GetSyncStatus(c *gin.Context) {
 	c.JSON(http.StatusOK, status)
 }
 
+// TriggerSync POST /api/sync/trigger
+// @Summary Trigger synchronization
+// @Description Trigger data synchronization from local SQLite to central PostgreSQL
+// @Tags Sync
+// @Accept json
+// @Produce json
+// @Success 200 {object} object
+// @Router /sync/trigger [post]
 func (h *SyncHandler) TriggerSync(c *gin.Context) {
 	var req struct {
 		PostgresDSN string `json:"postgres_dsn"`

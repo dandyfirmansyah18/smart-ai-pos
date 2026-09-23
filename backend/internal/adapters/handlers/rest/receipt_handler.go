@@ -18,6 +18,14 @@ func NewReceiptHandler(useCase inbound.ReceiptUseCase) *ReceiptHandler {
 }
 
 // ScanReceipt POST /api/receipts/scan
+// @Summary Scan receipt image (AI Vision)
+// @Description Extract item details from receipt image using AI vision client
+// @Tags Receipts
+// @Accept multipart/form-data
+// @Produce json
+// @Param image formData file true "Receipt Image file"
+// @Success 200 {object} domain.ReceiptAudit
+// @Router /receipts/scan [post]
 func (h *ReceiptHandler) ScanReceipt(c *gin.Context) {
 	fileHeader, err := c.FormFile("image")
 	if err != nil {
@@ -55,6 +63,12 @@ func (h *ReceiptHandler) ScanReceipt(c *gin.Context) {
 }
 
 // ListAudits GET /api/receipts/audits
+// @Summary List receipt audits
+// @Description Get audit logs of scanned receipts
+// @Tags Receipts
+// @Produce json
+// @Success 200 {array} domain.ReceiptAudit
+// @Router /receipts/audits [get]
 func (h *ReceiptHandler) ListAudits(c *gin.Context) {
 	audits, err := h.useCase.ListAudits(c.Request.Context())
 	if err != nil {

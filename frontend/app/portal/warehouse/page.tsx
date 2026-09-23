@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import ProtectedRoute from '../../../components/protected-route';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { fetchProducts, api } from '../../../services/api';
-import { Product } from '../../../types';
+import { Product, UserRole } from '../../../types';
 import { formatIDR } from '../../../utils/format';
 import { Warehouse, AlertTriangle, Package, RefreshCw, Plus, ArrowUpRight } from 'lucide-react';
 import AddProductModal from '../../../components/add-product-modal';
@@ -38,7 +38,7 @@ export default function WarehousePortalPage() {
   });
 
   return (
-    <ProtectedRoute allowedRoles={['ADMIN', 'WAREHOUSE', 'CASHIER']}>
+    <ProtectedRoute allowedRoles={[UserRole.ADMIN, UserRole.WAREHOUSE, UserRole.CASHIER]}>
       <div className="space-y-6">
         <header className="flex justify-between items-center bg-gray-900 border border-gray-800 p-6 rounded-2xl">
           <div className="flex items-center space-x-3">

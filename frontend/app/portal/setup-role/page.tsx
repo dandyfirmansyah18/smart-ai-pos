@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import ProtectedRoute from '../../../components/protected-route';
+import { UserRole } from '../../../types';
 import { api } from '../../../services/api';
 import { ShieldCheck, RefreshCw, CheckCircle2, AlertCircle, Lock } from 'lucide-react';
 
@@ -89,7 +90,7 @@ export default function SetupRolePage() {
   };
 
   return (
-    <ProtectedRoute allowedRoles={['ADMIN']}>
+    <ProtectedRoute allowedRoles={[UserRole.ADMIN]}>
       <div className="space-y-6">
         <header className="flex justify-between items-center bg-gray-900 border border-gray-800 p-6 rounded-2xl">
           <div className="flex items-center space-x-3">

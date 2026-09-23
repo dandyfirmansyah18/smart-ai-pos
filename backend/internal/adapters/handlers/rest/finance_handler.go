@@ -16,6 +16,12 @@ func NewFinanceHandler(useCase inbound.FinanceUseCase) *FinanceHandler {
 }
 
 // GetOrderHistory GET /api/orders/history
+// @Summary Get order history
+// @Description Get historical orders for financial reporting
+// @Tags Finance
+// @Produce json
+// @Success 200 {array} domain.Order
+// @Router /orders/history [get]
 func (h *FinanceHandler) GetOrderHistory(c *gin.Context) {
 	orders, err := h.useCase.GetOrderHistory(c.Request.Context())
 	if err != nil {
@@ -26,6 +32,12 @@ func (h *FinanceHandler) GetOrderHistory(c *gin.Context) {
 }
 
 // GetProfitLoss GET /api/finance/profit-loss
+// @Summary Get profit & loss summary
+// @Description Calculate total revenue, profit, and loss
+// @Tags Finance
+// @Produce json
+// @Success 200 {object} object
+// @Router /finance/profit-loss [get]
 func (h *FinanceHandler) GetProfitLoss(c *gin.Context) {
 	pl, err := h.useCase.GetProfitLoss(c.Request.Context())
 	if err != nil {

@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: pos-backend
+    env: go
+    region: singapore
+    plan: free
+    rootDir: backend
+    buildCommand: go build -o bin/api cmd/api/main.go
+    startCommand: ./bin/api
+    envVars:
+      - key: PORT
+        value: 8080
+      - key: ENV
+        value: production
+      - key: DB_TYPE
+        value: sqlite
+      - key: SQLITE_PATH
+        value: ./pos_local.db
+      - key: AUTO_FAILOVER
+        value: "true"

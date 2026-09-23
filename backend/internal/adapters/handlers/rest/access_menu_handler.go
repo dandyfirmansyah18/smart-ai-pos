@@ -16,6 +16,12 @@ func NewAccessMenuHandler(useCase inbound.AccessMenuUseCase) *AccessMenuHandler 
 }
 
 // GetAccessMenus GET /api/access-menus
+// @Summary Get access menus
+// @Description Get list of application menus
+// @Tags AccessMenus
+// @Produce json
+// @Success 200 {array} domain.AccessMenu
+// @Router /access-menus [get]
 func (h *AccessMenuHandler) GetAccessMenus(c *gin.Context) {
 	menus, err := h.useCase.GetMenus(c.Request.Context())
 	if err != nil {
@@ -26,6 +32,12 @@ func (h *AccessMenuHandler) GetAccessMenus(c *gin.Context) {
 }
 
 // GetRoleAccessMappings GET /api/access-menus/roles
+// @Summary Get role access mappings
+// @Description Get role-based menu access configurations
+// @Tags AccessMenus
+// @Produce json
+// @Success 200 {object} object
+// @Router /access-menus/roles [get]
 func (h *AccessMenuHandler) GetRoleAccessMappings(c *gin.Context) {
 	mappings, err := h.useCase.GetRoleAccess(c.Request.Context())
 	if err != nil {
@@ -36,6 +48,13 @@ func (h *AccessMenuHandler) GetRoleAccessMappings(c *gin.Context) {
 }
 
 // UpdateRoleAccess PUT /api/access-menus/roles (Admin only)
+// @Summary Update role menu access
+// @Description Update permission for a specific role and menu key (Admin only)
+// @Tags AccessMenus
+// @Accept json
+// @Produce json
+// @Success 200 {object} object
+// @Router /access-menus/roles [put]
 func (h *AccessMenuHandler) UpdateRoleAccess(c *gin.Context) {
 	var req struct {
 		Role      string `json:"role" binding:"required"`
