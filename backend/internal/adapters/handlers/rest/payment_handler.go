@@ -18,6 +18,14 @@ func NewPaymentHandler(useCase inbound.PaymentUseCase) *PaymentHandler {
 }
 
 // CreatePaymentCharge POST /api/payments/charge
+// @Summary Create payment charge
+// @Description Initiate payment charge (Midtrans QRIS / Snap)
+// @Tags Payments
+// @Accept json
+// @Produce json
+// @Param request body dto.CreatePaymentChargeRequest true "Payment charge details"
+// @Success 201 {object} domain.OrderPayment
+// @Router /payments/charge [post]
 func (h *PaymentHandler) CreatePaymentCharge(c *gin.Context) {
 	var req dto.CreatePaymentChargeRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -40,6 +48,13 @@ func (h *PaymentHandler) CreatePaymentCharge(c *gin.Context) {
 }
 
 // GetPaymentByOrderID GET /api/payments/order/:order_id
+// @Summary Get payment by order ID
+// @Description Get payment status and details by order ID
+// @Tags Payments
+// @Produce json
+// @Param order_id path string true "Order ID"
+// @Success 200 {object} domain.OrderPayment
+// @Router /payments/order/{order_id} [get]
 func (h *PaymentHandler) GetPaymentByOrderID(c *gin.Context) {
 	orderID := c.Param("order_id")
 	if orderID == "" {
@@ -57,6 +72,14 @@ func (h *PaymentHandler) GetPaymentByOrderID(c *gin.Context) {
 }
 
 // HandleWebhook POST /api/payments/webhook
+// @Summary Midtrans payment webhook
+// @Description Handle asynchronous payment status notification from Midtrans
+// @Tags Payments
+// @Accept json
+// @Produce json
+// @Param request body dto.MidtransWebhookRequest true "Webhook payload"
+// @Success 200 {object} object
+// @Router /payments/webhook [post]
 func (h *PaymentHandler) HandleWebhook(c *gin.Context) {
 	var req dto.MidtransWebhookRequest
 	if err := c.ShouldBindJSON(&req); err != nil {

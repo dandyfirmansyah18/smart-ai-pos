@@ -18,6 +18,12 @@ func NewProductHandler(repo outbound.ProductRepository) *ProductHandler {
 }
 
 // ListProducts GET /api/products
+// @Summary List all products
+// @Description Get all products available in inventory
+// @Tags Products
+// @Produce json
+// @Success 200 {array} domain.Product
+// @Router /products [get]
 func (h *ProductHandler) ListProducts(c *gin.Context) {
 	products, err := h.repo.ListAll(c.Request.Context())
 	if err != nil {
@@ -31,6 +37,13 @@ func (h *ProductHandler) ListProducts(c *gin.Context) {
 }
 
 // GetProductBySKU GET /api/products/:sku
+// @Summary Get product by SKU
+// @Description Get specific product details by SKU
+// @Tags Products
+// @Produce json
+// @Param sku path string true "Product SKU"
+// @Success 200 {object} domain.Product
+// @Router /products/{sku} [get]
 func (h *ProductHandler) GetProductBySKU(c *gin.Context) {
 	sku := c.Param("sku")
 	if sku == "" {
@@ -52,6 +65,14 @@ func (h *ProductHandler) GetProductBySKU(c *gin.Context) {
 }
 
 // CreateProduct POST /api/products
+// @Summary Create a new product
+// @Description Create a new product in inventory (Admin/Warehouse only)
+// @Tags Products
+// @Accept json
+// @Produce json
+// @Param request body domain.Product true "Product details"
+// @Success 201 {object} domain.Product
+// @Router /products [post]
 func (h *ProductHandler) CreateProduct(c *gin.Context) {
 	var req domain.Product
 	if err := c.ShouldBindJSON(&req); err != nil {

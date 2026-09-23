@@ -34,6 +34,14 @@ func parseUserID(c *gin.Context) (string, bool) {
 }
 
 // OpenShift POST /api/cash-shifts/open
+// @Summary Open cash shift
+// @Description Open a new cashier shift (buka kasir)
+// @Tags CashShifts
+// @Accept json
+// @Produce json
+// @Param request body dto.OpenCashShiftRequest true "Opening cash amount and notes"
+// @Success 201 {object} dto.OpenCashShiftResponse
+// @Router /cash-shifts/open [post]
 func (h *CashShiftHandler) OpenShift(c *gin.Context) {
 	userID, ok := parseUserID(c)
 	if !ok {
@@ -60,6 +68,12 @@ func (h *CashShiftHandler) OpenShift(c *gin.Context) {
 }
 
 // GetCurrentShift GET /api/cash-shifts/current
+// @Summary Get current cash shift
+// @Description Get active open cash shift for logged-in cashier
+// @Tags CashShifts
+// @Produce json
+// @Success 200 {object} domain.CashShift
+// @Router /cash-shifts/current [get]
 func (h *CashShiftHandler) GetCurrentShift(c *gin.Context) {
 	userID, ok := parseUserID(c)
 	if !ok {
@@ -77,6 +91,14 @@ func (h *CashShiftHandler) GetCurrentShift(c *gin.Context) {
 }
 
 // CloseShift POST /api/cash-shifts/close
+// @Summary Close cash shift
+// @Description Close active cashier shift (tutup kasir)
+// @Tags CashShifts
+// @Accept json
+// @Produce json
+// @Param request body dto.CloseCashShiftRequest true "Closing cash amount and notes"
+// @Success 200 {object} dto.CloseCashShiftResponse
+// @Router /cash-shifts/close [post]
 func (h *CashShiftHandler) CloseShift(c *gin.Context) {
 	userID, ok := parseUserID(c)
 	if !ok {

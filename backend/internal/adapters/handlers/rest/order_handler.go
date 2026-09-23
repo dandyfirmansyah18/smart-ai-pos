@@ -19,6 +19,14 @@ func NewOrderHandler(useCase inbound.OrderUseCase) *OrderHandler {
 }
 
 // Checkout POST /api/orders/checkout
+// @Summary Checkout order
+// @Description Process order checkout with idempotency key and stock deduction
+// @Tags Orders
+// @Accept json
+// @Produce json
+// @Param request body dto.CheckoutRequest true "Checkout items and details"
+// @Success 201 {object} domain.Order
+// @Router /orders/checkout [post]
 func (h *OrderHandler) Checkout(c *gin.Context) {
 	var req dto.CheckoutRequest
 	if err := c.ShouldBindJSON(&req); err != nil {
